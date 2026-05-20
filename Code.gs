@@ -14,11 +14,22 @@ function doGet(e) {
   const dateParam  = (e.parameter && e.parameter.date)  ? e.parameter.date  : null;
   const monthParam = (e.parameter && e.parameter.month) ? e.parameter.month : null;
 
+  // ใช้ header เป็นตัวหา column แทนการใช้ index ตายตัว
+  const headers = data[0].map(h => String(h).trim());
+  const col = {
+    date:    headers.findIndex(h => h.includes("วันที่")),
+    time:    headers.findIndex(h => h.includes("เวลา")),
+    name:    headers.findIndex(h => h.includes("ชื่อ")),
+    phone:   headers.findIndex(h => h.includes("เบอร์") || h.includes("โทร")),
+    count:   headers.findIndex(h => h.includes("จำนวน")),
+    allergy: headers.findIndex(h => h.includes("แพ้")),
+  };
+
   const result = [];
 
   for (let i = 1; i < data.length; i++) {
-    const row    = data[i];
-    const rawDate = row[1];
+    const row     = data[i];
+    const rawDate = col.date >= 0 ? row[col.date] : row[1];
     if (!rawDate) continue;
 
     let dateStr;
@@ -28,17 +39,17 @@ function doGet(e) {
       dateStr = String(rawDate).substring(0, 10);
     }
 
-    if (dateParam  && dateStr !== dateParam)          continue;
+    if (dateParam  && dateStr !== dateParam)           continue;
     if (monthParam && !dateStr.startsWith(monthParam)) continue;
 
-    const allergy = String(row[6] || "").trim();
+    const allergy = col.allergy >= 0 ? String(row[col.allergy] || "").trim() : "";
 
     result.push({
       date:       dateStr,
-      time:       String(row[2] || "").trim(),
-      name:       String(row[3] || "").trim(),
-      phone:      String(row[4] || "").trim(),
-      count:      String(row[5] || "1").trim(),
+      time:       col.time    >= 0 ? String(row[col.time]    || "").trim() : "",
+      name:       col.name    >= 0 ? String(row[col.name]    || "").trim() : "",
+      phone:      col.phone   >= 0 ? String(row[col.phone]   || "").trim() : "",
+      count:      col.count   >= 0 ? String(row[col.count]   || "1").trim() : "1",
       allergy:    allergy,
       hasAllergy: allergy !== "" && allergy !== "ไม่แพ้",
     });

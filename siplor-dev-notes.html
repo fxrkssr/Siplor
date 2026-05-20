@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Siplor — Dev Notes & Setup Guide</title>
+  <style>
+    :root { --brand: #1a3a5c; --gold: #b8860b; --danger: #c0392b; --green: #16a34a; --surface: #f4f6f9; --border: #e2e8f0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: var(--surface); color: #1e293b; padding: 32px 20px; line-height: 1.7; }
+    .container { max-width: 860px; margin: 0 auto; }
+    h1 { color: var(--brand); font-size: 28px; border-bottom: 3px solid var(--brand); padding-bottom: 10px; margin-bottom: 6px; }
+    .subtitle { color: #64748b; font-size: 14px; margin-bottom: 32px; }
+    h2 { color: var(--brand); font-size: 18px; margin: 32px 0 12px; padding-left: 12px; border-left: 4px solid var(--gold); }
+    h3 { color: #334155; font-size: 15px; margin: 16px 0 8px; }
+    p { margin-bottom: 10px; font-size: 15px; }
+    ul, ol { padding-left: 20px; margin-bottom: 12px; font-size: 15px; }
+    li { margin-bottom: 6px; }
+    code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; }
+    pre { background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; margin: 12px 0; }
+    .card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; margin-right: 6px; }
+    .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+    .badge-orange { background: #ffedd5; color: #c2410c; }
+    .badge-green  { background: #dcfce7; color: #15803d; }
+    .badge-gray   { background: #f1f5f9; color: #475569; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+    th { background: #f8fafc; color: #334155; padding: 10px 12px; border: 1px solid var(--border); text-align: left; }
+    td { padding: 10px 12px; border: 1px solid var(--border); }
+    .alert { background: #fffbeb; border-left: 4px solid var(--gold); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 14px; }
+    .alert-red { background: #fff0ef; border-left-color: var(--danger); }
+    .step { display: flex; gap: 14px; margin-bottom: 14px; }
+    .step-num { background: var(--brand); color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Siplor — Dev Notes & Setup Guide</h1>
+  <p class="subtitle">บันทึกการพัฒนาระบบจองโต๊ะร้าน Siplor | สร้างเมื่อ 20 พฤษภาคม 2568</p>
+
+  <!-- TECH STACK -->
+  <h2>🛠️ Tech Stack</h2>
+  <div class="card">
+    <table>
+      <tr><th>เครื่องมือ</th><th>หน้าที่</th><th>ลิงก์</th></tr>
+      <tr><td><span class="badge badge-green">Google Forms</span></td><td>แอดมินกรอกข้อมูลการจอง</td><td>สร้างจาก Apps Script</td></tr>
+      <tr><td><span class="badge badge-green">Google Sheets</span></td><td>ฐานข้อมูลเก็บการจอง</td><td>ผูกกับ Form อัตโนมัติ</td></tr>
+      <tr><td><span class="badge badge-green">Google Apps Script</span></td><td>API ดึงข้อมูลจาก Sheets → JSON</td><td>deploy เป็น Web App</td></tr>
+      <tr><td><span class="badge badge-orange">Cloudflare Worker</span></td><td>CORS proxy + cache 60 วินาที</td><td>siplor.fxrkssr.workers.dev</td></tr>
+      <tr><td><span class="badge badge-blue">Vercel</span></td><td>Host หน้าเว็บ dashboard</td><td>siplor.vercel.app</td></tr>
+      <tr><td><span class="badge badge-gray">GitHub</span></td><td>เก็บ source code</td><td>github.com/fxrkssr/Siplor</td></tr>
+    </table>
+  </div>
+
+  <!-- FILES -->
+  <h2>📁 ไฟล์ในโปรเจกต์</h2>
+  <div class="card">
+    <table>
+      <tr><th>ไฟล์</th><th>อยู่ที่ไหน</th><th>หน้าที่</th></tr>
+      <tr><td><code>dashboard.html</code></td><td>GitHub → Vercel</td><td>หน้าเว็บพนักงาน (login + ดูคิว)</td></tr>
+      <tr><td><code>Code.gs</code></td><td>Google Apps Script</td><td>API endpoint ดึงข้อมูลจาก Sheets</td></tr>
+      <tr><td><code>worker.js</code></td><td>Cloudflare Worker</td><td>Proxy + CORS + Cache</td></tr>
+      <tr><td><code>index.html</code></td><td>GitHub → Vercel</td><td>หน้าเว็บร้าน āPO (สต็อกปลา)</td></tr>
+      <tr><td><code>workflow.html</code></td><td>Local</td><td>Blueprint ต้นฉบับของระบบ</td></tr>
+      <tr><td><code>siplor-dev-notes.html</code></td><td>GitHub</td><td>ไฟล์นี้ — บันทึกการพัฒนา</td></tr>
+    </table>
+  </div>
+
+  <!-- WORKFLOW -->
+  <h2>🔄 Data Flow</h2>
+  <div class="card">
+    <p style="font-size:15px; text-align:center; letter-spacing:1px;">
+      แอดมินกรอก <strong>Google Form</strong>
+      → บันทึกลง <strong>Google Sheets</strong>
+      → <strong>Apps Script</strong> แปลงเป็น JSON
+      → <strong>Cloudflare Worker</strong> (CORS + Cache 60s)
+      → <strong>Dashboard</strong> บน Vercel
+    </p>
+  </div>
+
+  <!-- CREDENTIALS -->
+  <h2>🔑 Credentials & URLs</h2>
+  <div class="alert alert-red">⚠️ เก็บข้อมูลนี้ไว้เป็นความลับ — ห้ามแชร์ให้บุคคลภายนอก</div>
+  <div class="card">
+    <table>
+      <tr><th>รายการ</th><th>ค่า</th></tr>
+      <tr><td>Dashboard URL</td><td><code>https://siplor.vercel.app/dashboard.html</code></td></tr>
+      <tr><td>รหัสผ่านพนักงาน</td><td><code>7777</code></td></tr>
+      <tr><td>Cloudflare Worker URL</td><td><code>https://siplor.fxrkssr.workers.dev</code></td></tr>
+      <tr><td>Apps Script URL</td><td><code>https://script.google.com/macros/s/AKfycbz4AQYwgqOaOoyEJpmE5RMAk01GKt9adJhst2MdX8GZvEw7cQ5DR3r4gV9_DokJbwAN/exec</code></td></tr>
+      <tr><td>GitHub Repo</td><td><code>https://github.com/fxrkssr/Siplor</code></td></tr>
+    </table>
+  </div>
+
+  <!-- GOOGLE SHEETS STRUCTURE -->
+  <h2>📊 โครงสร้าง Google Sheets</h2>
+  <div class="card">
+    <p>Sheet แรก (index 0) — response จาก Google Form</p>
+    <table>
+      <tr><th>Column</th><th>Header</th><th>ตัวอย่างข้อมูล</th></tr>
+      <tr><td>A</td><td>Timestamp</td><td>5/20/2026 14:30:00</td></tr>
+      <tr><td>B</td><td>วันที่จอง</td><td>5/22/2026</td></tr>
+      <tr><td>C</td><td>เวลาที่จอง</td><td>18:00</td></tr>
+      <tr><td>D</td><td>ชื่อลูกค้า</td><td>สมชาย</td></tr>
+      <tr><td>E</td><td>เบอร์โทรศัพท์</td><td>081-234-5678</td></tr>
+      <tr><td>F</td><td>จำนวนลูกค้า (คน)</td><td>4</td></tr>
+      <tr><td>G</td><td>ข้อมูลแพ้อาหาร</td><td>ไม่แพ้</td></tr>
+      <tr><td>H</td><td>หมายเหตุเพิ่มเติม</td><td>(optional)</td></tr>
+    </table>
+    <p style="margin-top:10px; font-size:13px; color:#64748b;">
+      Code.gs ใช้ header-based mapping — ไม่ได้ใช้ index ตายตัว ดังนั้นถ้า column สลับกันก็ยังทำงานได้ถูกต้อง
+    </p>
+  </div>
+
+  <!-- DASHBOARD FEATURES -->
+  <h2>🖥️ ฟีเจอร์ Dashboard</h2>
+  <div class="card">
+    <table>
+      <tr><th>ฟีเจอร์</th><th>รายละเอียด</th></tr>
+      <tr><td>Login</td><td>รหัสผ่าน <code>7777</code> — session ไม่หมดจนกว่าจะปิด browser</td></tr>
+      <tr><td>📅 รายวัน</td><td>ดูคิวรายวัน — กดวันที่หรือลูกศรเปลี่ยนวัน — กดข้อความวันที่เพื่อเปิด calendar</td></tr>
+      <tr><td>📆 ลูกค้าเดือนนี้</td><td>ดูการจองทั้งเดือน — นำทางได้ 3 เดือนข้างหน้า — จัดกลุ่มตามวันที่</td></tr>
+      <tr><td>Allergy Alert</td><td>การ์ดสีแดงถ้าแพ้อาหาร — ทุกการ์ดแสดงสถานะแพ้/ไม่แพ้เสมอ</td></tr>
+      <tr><td>รีเฟรช</td><td>ปุ่มลอยขวาล่าง — ดึงข้อมูลใหม่ทันที</td></tr>
+      <tr><td>Summary Chip</td><td>แสดงจำนวนลูกค้ารวมของวัน/เดือนที่เลือก</td></tr>
+    </table>
+  </div>
+
+  <hr>
+
+  <!-- SETUP GUIDE -->
+  <h2>⚙️ ขั้นตอน Setup ตั้งแต่ต้น (ถ้าต้องทำใหม่)</h2>
+
+  <h3>1. Google Apps Script</h3>
+  <div class="step"><div class="step-num">1</div><div>เปิด Google Sheets → <strong>Extensions → Apps Script</strong></div></div>
+  <div class="step"><div class="step-num">2</div><div>วางโค้ดจาก <code>Code.gs</code> ทับโค้ดเดิม → Save</div></div>
+  <div class="step"><div class="step-num">3</div><div>ครั้งแรก: เลือก function <code>createBookingForm</code> → Run → Allow permissions → รับลิงก์ Form</div></div>
+  <div class="step"><div class="step-num">4</div><div><strong>Deploy → New deployment → Web app</strong><br>Execute as: Me | Who has access: Anyone → คัดลอก URL</div></div>
+  <div class="step"><div class="step-num">5</div><div>เมื่อแก้โค้ด: <strong>Deploy → Manage deployments → ✏️ → New version → Deploy</strong></div></div>
+
+  <h3>2. Cloudflare Worker</h3>
+  <div class="step"><div class="step-num">1</div><div>cloudflare.com → <strong>Workers & Pages → Create → Hello World → Deploy</strong></div></div>
+  <div class="step"><div class="step-num">2</div><div>หลัง deploy → <strong>Edit code</strong> → วางโค้ดจาก <code>worker.js</code> → Deploy</div></div>
+  <div class="step"><div class="step-num">3</div><div>คัดลอก Worker URL (เช่น <code>siplor.fxrkssr.workers.dev</code>)</div></div>
+
+  <h3>3. Dashboard</h3>
+  <div class="step"><div class="step-num">1</div><div>เปิด <code>dashboard.html</code> แก้ <code>API_URL</code> ให้ตรงกับ Worker URL</div></div>
+  <div class="step"><div class="step-num">2</div><div>Push ขึ้น GitHub → Vercel deploy อัตโนมัติ</div></div>
+  <div class="step"><div class="step-num">3</div><div>เข้าถึงผ่าน <code>siplor.vercel.app/dashboard.html</code></div></div>
+
+  <hr>
+
+  <!-- TROUBLESHOOTING -->
+  <h2>🔧 ปัญหาที่เจอและวิธีแก้</h2>
+  <div class="card">
+    <table>
+      <tr><th>ปัญหา</th><th>สาเหตุ</th><th>วิธีแก้</th></tr>
+      <tr>
+        <td>Sheet not found error</td>
+        <td>Apps Script ใช้ชื่อ sheet ผิด</td>
+        <td>เปลี่ยนมาใช้ <code>getSheets()[0]</code> แทน</td>
+      </tr>
+      <tr>
+        <td>โหลดข้อมูลไม่สำเร็จ</td>
+        <td>Apps Script ยังไม่ได้ redeploy หลังแก้โค้ด</td>
+        <td>Deploy → Manage → New version</td>
+      </tr>
+      <tr>
+        <td>เดือนนี้แสดงว่างเปล่า</td>
+        <td>Cloudflare Worker ยังเป็น version เก่า ไม่รองรับ <code>?month=</code></td>
+        <td>Update Worker code → Deploy</td>
+      </tr>
+      <tr>
+        <td>ไม่มีเบอร์โทรศัพท์</td>
+        <td>Column index ผิด หรือ header ไม่ตรง</td>
+        <td>ใช้ header-based mapping ใน Code.gs</td>
+      </tr>
+      <tr>
+        <td>404 บน Vercel</td>
+        <td>Vercel serve <code>index.html</code> เป็น default</td>
+        <td>เปิดด้วย <code>/dashboard.html</code> ตรงๆ</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- HOW TO UPDATE -->
+  <h2>✏️ วิธีแก้ไขโค้ดในอนาคต</h2>
+  <div class="alert">
+    ทุกครั้งที่แก้ไขโค้ดใน Claude Code → Git จะ push ขึ้น GitHub → Vercel deploy อัตโนมัติภายใน 30 วินาที<br>
+    ยกเว้น <strong>Code.gs</strong> (ต้อง paste ใน Apps Script แล้ว redeploy เอง) และ <strong>worker.js</strong> (ต้อง paste ใน Cloudflare แล้ว Deploy เอง)
+  </div>
+  <table style="font-size:14px; margin-top:8px;">
+    <tr><th>ต้องการแก้อะไร</th><th>แก้ไฟล์</th><th>Deploy ที่ไหน</th></tr>
+    <tr><td>หน้าตา Dashboard / ฟีเจอร์ใหม่</td><td><code>dashboard.html</code></td><td>GitHub → Vercel (auto)</td></tr>
+    <tr><td>เพิ่ม column / เปลี่ยน logic ดึงข้อมูล</td><td><code>Code.gs</code></td><td>Apps Script (manual redeploy)</td></tr>
+    <tr><td>เปลี่ยน cache time / เพิ่ม route</td><td><code>worker.js</code></td><td>Cloudflare (manual)</td></tr>
+  </table>
+
+  <hr>
+  <p style="font-size:12px; color:#94a3b8; text-align:center;">
+    Generated by Claude Code · Siplor Booking System · 2026-05-20
+  </p>
+
+</div>
+</body>
+</html>
