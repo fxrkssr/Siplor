@@ -7,17 +7,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --brand:      #1a3a5c;
-      --gold:       #b8860b;
-      --danger:     #c0392b;
-      --danger-bg:  #fff0ef;
-      --safe:       #16a34a;
-      --safe-bg:    #f0fdf4;
-      --surface:    #f4f6f9;
-      --card-bg:    #ffffff;
-      --text:       #1e293b;
-      --muted:      #64748b;
-      --border:     #e2e8f0;
+      --brand:     #1a3a5c;
+      --gold:      #b8860b;
+      --danger:    #c0392b;
+      --danger-bg: #fff0ef;
+      --safe:      #16a34a;
+      --safe-bg:   #f0fdf4;
+      --surface:   #f4f6f9;
+      --card-bg:   #ffffff;
+      --text:      #1e293b;
+      --muted:     #64748b;
+      --border:    #e2e8f0;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -29,7 +29,7 @@
       min-height: 100dvh;
     }
 
-    /* ============ LOGIN ============ */
+    /* ===== LOGIN ===== */
     #login-screen {
       min-height: 100dvh;
       display: flex;
@@ -110,13 +110,13 @@
       min-height: 18px;
     }
 
-    /* ============ DASHBOARD ============ */
+    /* ===== DASHBOARD ===== */
     #dashboard { display: none; }
 
     .dash-header {
       background: var(--brand);
       color: #fff;
-      padding: 20px 20px 16px;
+      padding: 16px 20px;
       position: sticky;
       top: 0;
       z-index: 100;
@@ -127,7 +127,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
 
     .brand-name {
@@ -148,11 +148,39 @@
 
     #total-count { font-size: 18px; font-weight: 700; }
 
-    .date-nav {
+    /* Mode tabs */
+    .mode-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .mode-tab {
+      flex: 1;
+      padding: 8px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.6);
+      font-family: "Sarabun", sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .mode-tab.active {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: #fff;
+    }
+
+    /* Day nav */
+    .day-nav {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 12px;
     }
 
     .nav-btn {
@@ -172,6 +200,7 @@
     }
 
     .nav-btn:active { background: rgba(255,255,255,0.25); }
+    .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
     #date-picker {
       flex: 1;
@@ -190,8 +219,8 @@
     }
 
     .today-btn {
-      background: var(--gold);
-      border: none;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
       color: #fff;
       padding: 0 14px;
       height: 36px;
@@ -204,35 +233,27 @@
       transition: opacity 0.15s;
     }
 
-    .today-btn:active { opacity: 0.8; }
+    .today-btn:active { opacity: 0.7; }
 
-    /* Upcoming toggle button */
-    .upcoming-btn {
-      width: 100%;
-      padding: 10px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.2);
-      color: rgba(255,255,255,0.75);
-      font-family: "Sarabun", sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s;
-      letter-spacing: 0.5px;
+    /* Month nav */
+    .month-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    .upcoming-btn.active {
-      background: var(--gold);
-      border-color: var(--gold);
-      color: #fff;
+    .month-label {
+      flex: 1;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 1px;
     }
 
-    .upcoming-btn:active { opacity: 0.85; }
-
+    /* ===== CONTENT ===== */
     .content { padding: 16px; max-width: 600px; margin: 0 auto; }
 
-    .date-label {
+    .section-label {
       font-size: 13px;
       font-weight: 600;
       color: var(--muted);
@@ -244,14 +265,40 @@
       text-decoration: underline dotted;
     }
 
-    .date-label:active { opacity: 0.6; }
+    .section-label:active { opacity: 0.6; }
 
+    /* Month date group */
+    .date-group { margin-bottom: 24px; }
+
+    .date-group-header {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--brand);
+      background: #e8eef5;
+      padding: 8px 14px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .date-group-count {
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--brand);
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    /* Cards */
     .booking-card {
       background: var(--card-bg);
       border-radius: 12px;
       border: 1px solid var(--border);
       padding: 16px 18px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       display: flex;
       gap: 14px;
       align-items: flex-start;
@@ -316,17 +363,10 @@
       border-radius: 6px;
     }
 
-    .allergy-tag.has-allergy {
-      background: var(--danger);
-      color: #fff;
-    }
+    .allergy-tag.has-allergy { background: var(--danger); color: #fff; }
+    .allergy-tag.no-allergy  { background: var(--safe-bg); color: var(--safe); border: 1px solid #bbf7d0; }
 
-    .allergy-tag.no-allergy {
-      background: var(--safe-bg);
-      color: var(--safe);
-      border: 1px solid #bbf7d0;
-    }
-
+    /* States */
     .state-box {
       text-align: center;
       padding: 60px 20px;
@@ -377,7 +417,7 @@
 </head>
 <body>
 
-<!-- =============== LOGIN =============== -->
+<!-- ===== LOGIN ===== -->
 <div id="login-screen">
   <div class="login-box">
     <h1>Siplor</h1>
@@ -389,30 +429,40 @@
   </div>
 </div>
 
-<!-- =============== DASHBOARD =============== -->
+<!-- ===== DASHBOARD ===== -->
 <div id="dashboard">
 
   <div class="dash-header">
     <div class="header-top">
       <span class="brand-name">Siplor</span>
-      <div class="summary-chip">
-        <span id="total-count">—</span> คน
-      </div>
+      <div class="summary-chip"><span id="total-count">—</span> คน</div>
     </div>
-    <div class="date-nav">
+
+    <!-- Mode tabs -->
+    <div class="mode-tabs">
+      <div class="mode-tab active" id="tab-day"   onclick="setMode('day')">📅 รายวัน</div>
+      <div class="mode-tab"        id="tab-month" onclick="setMode('month')">📆 ลูกค้าเดือนนี้</div>
+    </div>
+
+    <!-- Day nav -->
+    <div class="day-nav" id="day-nav">
       <button class="nav-btn" onclick="shiftDate(-1)">&#8249;</button>
-      <input type="date" id="date-picker" onchange="onDateChange()">
+      <input type="date" id="date-picker" onchange="loadBookings()">
       <button class="nav-btn" onclick="shiftDate(1)">&#8250;</button>
       <button class="today-btn" onclick="goToday()">วันนี้</button>
     </div>
-    <button class="upcoming-btn" id="upcoming-btn" onclick="toggleUpcoming()">
-      &#128336; คิวถัดไป — ลูกค้าที่ยังไม่มาวันนี้
-    </button>
+
+    <!-- Month nav -->
+    <div class="month-nav" id="month-nav" style="display:none">
+      <button class="nav-btn" id="month-prev" onclick="shiftMonth(-1)">&#8249;</button>
+      <div class="month-label" id="month-label"></div>
+      <button class="nav-btn" id="month-next" onclick="shiftMonth(1)">&#8250;</button>
+    </div>
   </div>
 
   <div class="content">
-    <div class="date-label" id="date-label"
-         onclick="document.getElementById('date-picker').showPicker()"></div>
+    <div class="section-label" id="section-label"
+         onclick="if(mode==='day') document.getElementById('date-picker').showPicker()"></div>
     <div id="booking-list"></div>
   </div>
 
@@ -425,8 +475,10 @@
 <script>
   const API_URL  = "https://siplor.fxrkssr.workers.dev";
   const PASSWORD = "7777";
+  const MAX_MONTHS_AHEAD = 3;
 
-  let upcomingMode = false;
+  let mode         = "day";    // "day" | "month"
+  let currentMonth = "";       // "YYYY-MM"
 
   // ===== AUTH =====
   function login() {
@@ -449,35 +501,57 @@
 
   function initDashboard() { goToday(); }
 
-  // ===== DATE =====
+  // ===== HELPERS =====
   function todayISO() {
     return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
   }
 
-  function nowTimeBKK() {
-    return new Date().toLocaleTimeString("sv-SE", {
-      timeZone: "Asia/Bangkok",
-      hour: "2-digit",
-      minute: "2-digit"
-    }); // "HH:MM"
+  function thisMonthISO() {
+    return todayISO().substring(0, 7); // "YYYY-MM"
   }
 
+  function formatDateTH(iso) {
+    const [y, m, d] = iso.split("-");
+    const months = ["","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.",
+                    "ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+    return `${parseInt(d)} ${months[parseInt(m)]} ${parseInt(y) + 543}`;
+  }
+
+  function formatMonthTH(ym) {
+    const [y, m] = ym.split("-");
+    const months = ["","มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
+                    "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+    return `${months[parseInt(m)]} ${parseInt(y) + 543}`;
+  }
+
+  function addMonths(ym, delta) {
+    const [y, m] = ym.split("-").map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    return d.toLocaleDateString("sv-SE", { year: "numeric", month: "2-digit" }).substring(0, 7);
+  }
+
+  // ===== MODE =====
+  function setMode(m) {
+    mode = m;
+    document.getElementById("tab-day").classList.toggle("active",   m === "day");
+    document.getElementById("tab-month").classList.toggle("active", m === "month");
+    document.getElementById("day-nav").style.display   = m === "day"   ? "flex" : "none";
+    document.getElementById("month-nav").style.display = m === "month" ? "flex" : "none";
+
+    if (m === "month") {
+      currentMonth = thisMonthISO();
+      updateMonthNav();
+    }
+    loadBookings();
+  }
+
+  // ===== DAY MODE =====
   function goToday() {
-    upcomingMode = false;
-    updateUpcomingBtn();
     document.getElementById("date-picker").value = todayISO();
     loadBookings();
   }
 
-  function onDateChange() {
-    upcomingMode = false;
-    updateUpcomingBtn();
-    loadBookings();
-  }
-
   function shiftDate(delta) {
-    upcomingMode = false;
-    updateUpcomingBtn();
     const picker = document.getElementById("date-picker");
     const d = new Date(picker.value + "T00:00:00");
     d.setDate(d.getDate() + delta);
@@ -485,36 +559,31 @@
     loadBookings();
   }
 
-  function toggleUpcoming() {
-    upcomingMode = !upcomingMode;
-    updateUpcomingBtn();
-    if (upcomingMode) {
-      document.getElementById("date-picker").value = todayISO();
-    }
+  // ===== MONTH MODE =====
+  function shiftMonth(delta) {
+    const next = addMonths(currentMonth, delta);
+    const base = thisMonthISO();
+
+    // ไม่ให้ย้อนก่อนเดือนนี้ และไปได้แค่ 3 เดือนข้างหน้า
+    if (next < base || addMonths(next, 0) > addMonths(base, MAX_MONTHS_AHEAD)) return;
+
+    currentMonth = next;
+    updateMonthNav();
     loadBookings();
   }
 
-  function updateUpcomingBtn() {
-    document.getElementById("upcoming-btn").classList.toggle("active", upcomingMode);
-  }
-
-  function formatDateTH(iso) {
-    const [y, m, day] = iso.split("-");
-    const months = ["","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.",
-                    "ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
-    return `${parseInt(day)} ${months[parseInt(m)]} ${parseInt(y) + 543}`;
+  function updateMonthNav() {
+    const base = thisMonthISO();
+    document.getElementById("month-label").textContent = formatMonthTH(currentMonth);
+    document.getElementById("month-prev").disabled = currentMonth <= base;
+    document.getElementById("month-next").disabled = currentMonth >= addMonths(base, MAX_MONTHS_AHEAD);
   }
 
   // ===== LOAD =====
   async function loadBookings(showSpin = false) {
-    const date       = document.getElementById("date-picker").value;
     const list       = document.getElementById("booking-list");
-    const label      = document.getElementById("date-label");
+    const label      = document.getElementById("section-label");
     const refreshBtn = document.getElementById("refresh-btn");
-
-    label.textContent = upcomingMode
-      ? "คิวถัดไป — " + formatDateTH(date)
-      : formatDateTH(date);
 
     document.getElementById("total-count").textContent = "—";
 
@@ -525,21 +594,31 @@
     }
 
     try {
-      const res = await fetch(`${API_URL}?date=${date}&_=${Date.now()}`);
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      let bookings = await res.json();
+      let url, bookings;
 
-      if (upcomingMode) {
-        const now = nowTimeBKK();
-        bookings = bookings.filter(b => b.time >= now);
+      if (mode === "day") {
+        const date = document.getElementById("date-picker").value;
+        label.textContent = formatDateTH(date);
+        const res = await fetch(`${API_URL}?date=${date}&_=${Date.now()}`);
+        if (!res.ok) throw new Error();
+        bookings = await res.json();
+        const total = bookings.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
+        document.getElementById("total-count").textContent = total;
+        list.innerHTML = bookings.length === 0
+          ? renderEmptyDay(date)
+          : bookings.map(renderCard).join("");
+
+      } else {
+        label.textContent = formatMonthTH(currentMonth);
+        const res = await fetch(`${API_URL}?month=${currentMonth}&_=${Date.now()}`);
+        if (!res.ok) throw new Error();
+        bookings = await res.json();
+        const total = bookings.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
+        document.getElementById("total-count").textContent = total;
+        list.innerHTML = bookings.length === 0
+          ? renderEmptyMonth()
+          : renderMonthGroups(bookings);
       }
-
-      const total = bookings.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
-      document.getElementById("total-count").textContent = total;
-
-      list.innerHTML = bookings.length === 0
-        ? renderEmpty(date)
-        : bookings.map(renderCard).join("");
 
     } catch (e) {
       list.innerHTML = renderError();
@@ -551,7 +630,6 @@
   // ===== RENDER =====
   function renderCard(b) {
     const cls = b.hasAllergy ? " allergy" : "";
-
     const allergyTag = b.hasAllergy
       ? `<span class="allergy-tag has-allergy">&#9888; แพ้ ${escHtml(b.allergy)}</span>`
       : `<span class="allergy-tag no-allergy">&#10003; ไม่แพ้อาหาร</span>`;
@@ -570,18 +648,32 @@
       </div>`;
   }
 
+  function renderMonthGroups(bookings) {
+    const groups = {};
+    for (const b of bookings) {
+      if (!groups[b.date]) groups[b.date] = [];
+      groups[b.date].push(b);
+    }
+
+    return Object.keys(groups).sort().map(date => {
+      const list  = groups[date];
+      const total = list.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
+      return `
+        <div class="date-group">
+          <div class="date-group-header">
+            <span>${formatDateTH(date)}</span>
+            <span class="date-group-count">${total} คน</span>
+          </div>
+          ${list.map(renderCard).join("")}
+        </div>`;
+    }).join("");
+  }
+
   function renderLoading() {
     return `<div class="state-box"><div class="spinner"></div><p>กำลังโหลดข้อมูล...</p></div>`;
   }
 
-  function renderEmpty(date) {
-    if (upcomingMode) {
-      return `<div class="state-box">
-        <div class="icon">&#10003;</div>
-        <h3>ไม่มีคิวที่เหลือวันนี้</h3>
-        <p>ลูกค้าทุกคนมาครบแล้ว</p>
-      </div>`;
-    }
+  function renderEmptyDay(date) {
     const isToday = date === todayISO();
     return `<div class="state-box">
       <div class="icon">📋</div>
@@ -590,9 +682,17 @@
     </div>`;
   }
 
+  function renderEmptyMonth() {
+    return `<div class="state-box">
+      <div class="icon">📆</div>
+      <h3>ไม่มีการจองในเดือนนี้</h3>
+      <p>ยังไม่มีลูกค้าจองในเดือนที่เลือก</p>
+    </div>`;
+  }
+
   function renderError() {
     return `<div class="state-box">
-      <div class="icon">&#9888;&#65039;</div>
+      <div class="icon">⚠️</div>
       <h3>โหลดข้อมูลไม่สำเร็จ</h3>
       <p>กรุณาตรวจสอบการเชื่อมต่อแล้วกด รีเฟรช</p>
     </div>`;
