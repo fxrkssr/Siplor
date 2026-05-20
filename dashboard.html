@@ -7,15 +7,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --brand:   #1a3a5c;
-      --gold:    #b8860b;
-      --danger:  #c0392b;
-      --danger-bg: #fff0ef;
-      --surface: #f4f6f9;
-      --card-bg: #ffffff;
-      --text:    #1e293b;
-      --muted:   #64748b;
-      --border:  #e2e8f0;
+      --brand:      #1a3a5c;
+      --gold:       #b8860b;
+      --danger:     #c0392b;
+      --danger-bg:  #fff0ef;
+      --surface:    #f4f6f9;
+      --card-bg:    #ffffff;
+      --text:       #1e293b;
+      --muted:      #64748b;
+      --border:     #e2e8f0;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -111,7 +111,6 @@
     /* ============ DASHBOARD ============ */
     #dashboard { display: none; }
 
-    /* Header */
     .dash-header {
       background: var(--brand);
       color: #fff;
@@ -147,7 +146,6 @@
 
     #total-count { font-size: 18px; font-weight: 700; }
 
-    /* Date nav */
     .date-nav {
       display: flex;
       align-items: center;
@@ -205,7 +203,6 @@
 
     .today-btn:active { opacity: 0.8; }
 
-    /* Content */
     .content { padding: 16px; max-width: 600px; margin: 0 auto; }
 
     .date-label {
@@ -215,9 +212,13 @@
       letter-spacing: 1px;
       text-transform: uppercase;
       margin-bottom: 12px;
+      cursor: pointer;
+      display: inline-block;
+      text-decoration: underline dotted;
     }
 
-    /* Booking cards */
+    .date-label:active { opacity: 0.6; }
+
     .booking-card {
       background: var(--card-bg);
       border-radius: 12px;
@@ -228,10 +229,7 @@
       gap: 14px;
       align-items: flex-start;
       box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-      transition: transform 0.1s;
     }
-
-    .booking-card:active { transform: scale(0.99); }
 
     .booking-card.allergy {
       border-color: var(--danger);
@@ -293,7 +291,6 @@
       border-radius: 6px;
     }
 
-    /* States */
     .state-box {
       text-align: center;
       padding: 60px 20px;
@@ -316,7 +313,6 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Refresh FAB */
     .refresh-fab {
       position: fixed;
       bottom: 24px;
@@ -339,7 +335,7 @@
     }
 
     .refresh-fab:active { transform: scale(0.95); }
-    .refresh-fab .spin-icon { display: inline-block; transition: transform 0.4s; }
+    .refresh-fab .spin-icon { display: inline-block; }
     .refresh-fab.spinning .spin-icon { animation: spin 0.8s linear infinite; }
   </style>
 </head>
@@ -368,15 +364,16 @@
       </div>
     </div>
     <div class="date-nav">
-      <button class="nav-btn" onclick="shiftDate(-1)" title="วันก่อนหน้า">&#8249;</button>
+      <button class="nav-btn" onclick="shiftDate(-1)">&#8249;</button>
       <input type="date" id="date-picker" onchange="loadBookings()">
-      <button class="nav-btn" onclick="shiftDate(1)" title="วันถัดไป">&#8250;</button>
+      <button class="nav-btn" onclick="shiftDate(1)">&#8250;</button>
       <button class="today-btn" onclick="goToday()">วันนี้</button>
     </div>
   </div>
 
   <div class="content">
-    <div class="date-label" id="date-label"></div>
+    <div class="date-label" id="date-label"
+         onclick="document.getElementById('date-picker').showPicker()"></div>
     <div id="booking-list"></div>
   </div>
 
@@ -387,13 +384,11 @@
 </div>
 
 <script>
-  // ===== CONFIG =====
   const API_URL  = "https://siplor.fxrkssr.workers.dev";
   const PASSWORD = "7777";
 
-  // ===== AUTH =====
   function login() {
-    const val = document.getElementById("pw-input").value;
+    const val   = document.getElementById("pw-input").value;
     const input = document.getElementById("pw-input");
     const err   = document.getElementById("login-err");
 
@@ -410,12 +405,8 @@
     }
   }
 
-  // ===== INIT =====
-  function initDashboard() {
-    goToday();
-  }
+  function initDashboard() { goToday(); }
 
-  // ===== DATE HELPERS =====
   function todayISO() {
     return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
   }
@@ -435,16 +426,15 @@
 
   function formatDateTH(iso) {
     const [y, m, day] = iso.split("-");
-    const months = ["","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
-    const thYear = parseInt(y) + 543;
-    return `${parseInt(day)} ${months[parseInt(m)]} ${thYear}`;
+    const months = ["","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.",
+                    "ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+    return `${parseInt(day)} ${months[parseInt(m)]} ${parseInt(y) + 543}`;
   }
 
-  // ===== LOAD DATA =====
   async function loadBookings(showSpin = false) {
-    const date = document.getElementById("date-picker").value;
-    const list = document.getElementById("booking-list");
-    const label = document.getElementById("date-label");
+    const date       = document.getElementById("date-picker").value;
+    const list       = document.getElementById("booking-list");
+    const label      = document.getElementById("date-label");
     const refreshBtn = document.getElementById("refresh-btn");
 
     label.textContent = formatDateTH(date);
@@ -475,12 +465,9 @@
     }
   }
 
-  // ===== RENDER =====
   function renderCard(b) {
-    const hasAllergy = b.hasAllergy;
-    const cls = hasAllergy ? " allergy" : "";
-
-    const allergyTag = hasAllergy
+    const cls = b.hasAllergy ? " allergy" : "";
+    const allergyTag = b.hasAllergy
       ? `<span class="allergy-tag">&#9888; แพ้ ${escHtml(b.allergy)}</span>`
       : "";
 
@@ -527,7 +514,6 @@
       .replace(/"/g, "&quot;");
   }
 
-  // ===== AUTO-CHECK SESSION =====
   if (sessionStorage.getItem("siplor_auth") === "1") {
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("dashboard").style.display = "block";
