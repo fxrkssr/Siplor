@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Siplor — ระบบจองโต๊ะ</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+  <style>
+    /* วันอังคารในปฏิทิน — สีแดง */
+    .flatpickr-day.tuesday { color: #c0392b !important; font-weight: 700 !important; }
+    .flatpickr-day.tuesday:hover { background: #fff0ef !important; border-color: #c0392b !important; }
+    .flatpickr-day.tuesday.selected { background: #c0392b !important; border-color: #c0392b !important; color: #fff !important; }
+    .flatpickr-calendar { font-family: "Sarabun", sans-serif !important; border-radius: 12px !important; box-shadow: 0 8px 30px rgba(0,0,0,0.2) !important; }
+  </style>
   <style>
     :root {
       --brand:     #1a3a5c;
@@ -460,7 +468,7 @@
     <!-- Day nav -->
     <div class="day-nav" id="day-nav">
       <button class="nav-btn" onclick="shiftDate(-1)">&#8249;</button>
-      <input type="date" id="date-picker" onchange="loadBookings()">
+      <input type="text" id="date-picker" placeholder="เลือกวันที่" readonly>
       <button class="nav-btn" onclick="shiftDate(1)">&#8250;</button>
       <button class="today-btn" onclick="goToday()">วันนี้</button>
     </div>
@@ -475,7 +483,7 @@
 
   <div class="content">
     <div class="section-label" id="section-label"
-         onclick="if(mode==='day') document.getElementById('date-picker').showPicker()"></div>
+         onclick="if(mode==='day' && fp) fp.open()"></div>
     <div class="closed-banner" id="closed-banner">🔴 วันอังคาร — ร้านปิด</div>
     <div id="booking-list"></div>
   </div>
@@ -486,13 +494,15 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
   const API_URL  = "https://siplor.fxrkssr.workers.dev";
   const PASSWORD = "7777";
   const MAX_MONTHS_AHEAD = 3;
 
-  let mode         = "day";    // "day" | "month"
-  let currentMonth = "";       // "YYYY-MM"
+  let mode         = "day";
+  let currentMonth = "";
+  let fp           = null; // Flatpickr instance
 
   // ===== AUTH =====
   function login() {
@@ -513,7 +523,19 @@
     }
   }
 
-  function initDashboard() { goToday(); }
+  function initDashboard() {
+    fp = flatpickr("#date-picker", {
+      dateFormat: "Y-m-d",
+      disableMobile: true,
+      onDayCreate: function(dObj, dStr, fpInst, dayElem) {
+        if (dayElem.dateObj.getDay() === 2) {
+          dayElem.classList.add("tuesday");
+        }
+      },
+      onChange: function() { loadBookings(); }
+    });
+    goToday();
+  }
 
   // ===== HELPERS =====
   function todayISO() {
@@ -561,16 +583,14 @@
 
   // ===== DAY MODE =====
   function goToday() {
-    document.getElementById("date-picker").value = todayISO();
-    loadBookings();
+    fp.setDate(todayISO(), true);
   }
 
   function shiftDate(delta) {
-    const picker = document.getElementById("date-picker");
-    const d = new Date(picker.value + "T00:00:00");
+    const current = document.getElementById("date-picker").value || todayISO();
+    const d = new Date(current + "T00:00:00");
     d.setDate(d.getDate() + delta);
-    picker.value = d.toLocaleDateString("sv-SE");
-    loadBookings();
+    fp.setDate(d.toLocaleDateString("sv-SE"), true);
   }
 
   // ===== MONTH MODE =====
