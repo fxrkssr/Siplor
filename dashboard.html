@@ -253,6 +253,19 @@
     /* ===== CONTENT ===== */
     .content { padding: 16px; max-width: 600px; margin: 0 auto; }
 
+    .closed-banner {
+      background: #1e293b;
+      color: #f8fafc;
+      text-align: center;
+      padding: 18px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
     .section-label {
       font-size: 13px;
       font-weight: 600;
@@ -463,6 +476,7 @@
   <div class="content">
     <div class="section-label" id="section-label"
          onclick="if(mode==='day') document.getElementById('date-picker').showPicker()"></div>
+    <div class="closed-banner" id="closed-banner">🔴 วันอังคาร — ร้านปิด</div>
     <div id="booking-list"></div>
   </div>
 
@@ -586,6 +600,23 @@
     const refreshBtn = document.getElementById("refresh-btn");
 
     document.getElementById("total-count").textContent = "—";
+
+    // Tuesday check (day mode only)
+    const banner = document.getElementById("closed-banner");
+    if (mode === "day") {
+      const selDate = new Date(document.getElementById("date-picker").value + "T00:00:00");
+      const isTuesday = selDate.getDay() === 2;
+      banner.style.display = isTuesday ? "block" : "none";
+      if (isTuesday) {
+        document.getElementById("total-count").textContent = "0";
+        list.innerHTML = "";
+        refreshBtn.classList.remove("spinning");
+        label.textContent = formatDateTH(document.getElementById("date-picker").value);
+        return;
+      }
+    } else {
+      banner.style.display = "none";
+    }
 
     if (showSpin) {
       refreshBtn.classList.add("spinning");

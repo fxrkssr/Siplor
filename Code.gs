@@ -66,6 +66,38 @@ function jsonResponse(data) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// รันครั้งเดียวเพื่อติดตั้ง trigger บล็อกวันอังคาร
+function setupTuesdayBlock() {
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === "blockTuesdayBookings") {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  ScriptApp.newTrigger("blockTuesdayBookings")
+    .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
+    .onFormSubmit()
+    .create();
+  SpreadsheetApp.getUi().alert("ติดตั้ง trigger บล็อกวันอังคารสำเร็จ!");
+}
+
+// trigger นี้ทำงานอัตโนมัติทุกครั้งที่มีการ submit form
+function blockTuesdayBookings(e) {
+  const sheet = e.range.getSheet();
+  const row   = e.range.getRow();
+
+  const headers    = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const dateColIdx = headers.findIndex(h => String(h).includes("วันที่"));
+  if (dateColIdx < 0) return;
+
+  const dateVal = sheet.getRange(row, dateColIdx + 1).getValue();
+  if (!dateVal) return;
+
+  const bkkDate = new Date(new Date(dateVal).toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
+  if (bkkDate.getDay() === 2) { // 2 = อังคาร
+    sheet.deleteRow(row);
+  }
+}
+
 // รันฟังก์ชันนี้ครั้งเดียวเพื่อสร้าง Google Form อัตโนมัติ
 function createBookingForm() {
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
