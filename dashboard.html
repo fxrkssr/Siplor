@@ -11,6 +11,8 @@
       --gold:       #b8860b;
       --danger:     #c0392b;
       --danger-bg:  #fff0ef;
+      --safe:       #16a34a;
+      --safe-bg:    #f0fdf4;
       --surface:    #f4f6f9;
       --card-bg:    #ffffff;
       --text:       #1e293b;
@@ -150,6 +152,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      margin-bottom: 12px;
     }
 
     .nav-btn {
@@ -202,6 +205,30 @@
     }
 
     .today-btn:active { opacity: 0.8; }
+
+    /* Upcoming toggle button */
+    .upcoming-btn {
+      width: 100%;
+      padding: 10px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.75);
+      font-family: "Sarabun", sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.5px;
+    }
+
+    .upcoming-btn.active {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: #fff;
+    }
+
+    .upcoming-btn:active { opacity: 0.85; }
 
     .content { padding: 16px; max-width: 600px; margin: 0 auto; }
 
@@ -276,19 +303,28 @@
     .guest-phone {
       font-size: 14px;
       color: var(--muted);
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
 
     .allergy-tag {
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      background: var(--danger);
-      color: #fff;
       font-size: 13px;
       font-weight: 600;
       padding: 4px 10px;
       border-radius: 6px;
+    }
+
+    .allergy-tag.has-allergy {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .allergy-tag.no-allergy {
+      background: var(--safe-bg);
+      color: var(--safe);
+      border: 1px solid #bbf7d0;
     }
 
     .state-box {
@@ -365,10 +401,13 @@
     </div>
     <div class="date-nav">
       <button class="nav-btn" onclick="shiftDate(-1)">&#8249;</button>
-      <input type="date" id="date-picker" onchange="loadBookings()">
+      <input type="date" id="date-picker" onchange="onDateChange()">
       <button class="nav-btn" onclick="shiftDate(1)">&#8250;</button>
       <button class="today-btn" onclick="goToday()">วันนี้</button>
     </div>
+    <button class="upcoming-btn" id="upcoming-btn" onclick="toggleUpcoming()">
+      &#128336; คิวถัดไป — ลูกค้าที่ยังไม่มาวันนี้
+    </button>
   </div>
 
   <div class="content">
@@ -387,6 +426,9 @@
   const API_URL  = "https://siplor.fxrkssr.workers.dev";
   const PASSWORD = "7777";
 
+  let upcomingMode = false;
+
+  // ===== AUTH =====
   function login() {
     const val   = document.getElementById("pw-input").value;
     const input = document.getElementById("pw-input");
@@ -407,21 +449,53 @@
 
   function initDashboard() { goToday(); }
 
+  // ===== DATE =====
   function todayISO() {
     return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
   }
 
+  function nowTimeBKK() {
+    return new Date().toLocaleTimeString("sv-SE", {
+      timeZone: "Asia/Bangkok",
+      hour: "2-digit",
+      minute: "2-digit"
+    }); // "HH:MM"
+  }
+
   function goToday() {
+    upcomingMode = false;
+    updateUpcomingBtn();
     document.getElementById("date-picker").value = todayISO();
     loadBookings();
   }
 
+  function onDateChange() {
+    upcomingMode = false;
+    updateUpcomingBtn();
+    loadBookings();
+  }
+
   function shiftDate(delta) {
+    upcomingMode = false;
+    updateUpcomingBtn();
     const picker = document.getElementById("date-picker");
     const d = new Date(picker.value + "T00:00:00");
     d.setDate(d.getDate() + delta);
     picker.value = d.toLocaleDateString("sv-SE");
     loadBookings();
+  }
+
+  function toggleUpcoming() {
+    upcomingMode = !upcomingMode;
+    updateUpcomingBtn();
+    if (upcomingMode) {
+      document.getElementById("date-picker").value = todayISO();
+    }
+    loadBookings();
+  }
+
+  function updateUpcomingBtn() {
+    document.getElementById("upcoming-btn").classList.toggle("active", upcomingMode);
   }
 
   function formatDateTH(iso) {
@@ -431,13 +505,17 @@
     return `${parseInt(day)} ${months[parseInt(m)]} ${parseInt(y) + 543}`;
   }
 
+  // ===== LOAD =====
   async function loadBookings(showSpin = false) {
     const date       = document.getElementById("date-picker").value;
     const list       = document.getElementById("booking-list");
     const label      = document.getElementById("date-label");
     const refreshBtn = document.getElementById("refresh-btn");
 
-    label.textContent = formatDateTH(date);
+    label.textContent = upcomingMode
+      ? "คิวถัดไป — " + formatDateTH(date)
+      : formatDateTH(date);
+
     document.getElementById("total-count").textContent = "—";
 
     if (showSpin) {
@@ -449,7 +527,12 @@
     try {
       const res = await fetch(`${API_URL}?date=${date}&_=${Date.now()}`);
       if (!res.ok) throw new Error("HTTP " + res.status);
-      const bookings = await res.json();
+      let bookings = await res.json();
+
+      if (upcomingMode) {
+        const now = nowTimeBKK();
+        bookings = bookings.filter(b => b.time >= now);
+      }
 
       const total = bookings.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
       document.getElementById("total-count").textContent = total;
@@ -465,11 +548,13 @@
     }
   }
 
+  // ===== RENDER =====
   function renderCard(b) {
     const cls = b.hasAllergy ? " allergy" : "";
+
     const allergyTag = b.hasAllergy
-      ? `<span class="allergy-tag">&#9888; แพ้ ${escHtml(b.allergy)}</span>`
-      : "";
+      ? `<span class="allergy-tag has-allergy">&#9888; แพ้ ${escHtml(b.allergy)}</span>`
+      : `<span class="allergy-tag no-allergy">&#10003; ไม่แพ้อาหาร</span>`;
 
     return `
       <div class="booking-card${cls}">
@@ -490,6 +575,13 @@
   }
 
   function renderEmpty(date) {
+    if (upcomingMode) {
+      return `<div class="state-box">
+        <div class="icon">&#10003;</div>
+        <h3>ไม่มีคิวที่เหลือวันนี้</h3>
+        <p>ลูกค้าทุกคนมาครบแล้ว</p>
+      </div>`;
+    }
     const isToday = date === todayISO();
     return `<div class="state-box">
       <div class="icon">📋</div>
@@ -500,7 +592,7 @@
 
   function renderError() {
     return `<div class="state-box">
-      <div class="icon">⚠️</div>
+      <div class="icon">&#9888;&#65039;</div>
       <h3>โหลดข้อมูลไม่สำเร็จ</h3>
       <p>กรุณาตรวจสอบการเชื่อมต่อแล้วกด รีเฟรช</p>
     </div>`;
@@ -514,6 +606,7 @@
       .replace(/"/g, "&quot;");
   }
 
+  // ===== AUTO SESSION =====
   if (sessionStorage.getItem("siplor_auth") === "1") {
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("dashboard").style.display = "block";
