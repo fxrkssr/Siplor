@@ -22,27 +22,15 @@ export default {
       ? `${APPS_SCRIPT_URL}?month=${month}`
       : `${APPS_SCRIPT_URL}?date=${date || todayBKK()}`;
 
-    const cacheKey = new Request(upstream);
-    const cache = caches.default;
-
-    let cached = await cache.match(cacheKey);
-    if (cached) {
-      const body = await cached.text();
-      return new Response(body, { headers: CORS });
-    }
-
-    const res = await fetch(upstream, { redirect: "follow" });
+    const res  = await fetch(upstream, { redirect: "follow" });
     const text = await res.text();
 
-    const fresh = new Response(text, {
+    return new Response(text, {
       headers: {
         ...CORS,
-        "Cache-Control": "public, max-age=60",
+        "Cache-Control": "no-store",
       },
     });
-
-    await cache.put(cacheKey, fresh.clone());
-    return fresh;
   },
 };
 
