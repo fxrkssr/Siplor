@@ -14,6 +14,8 @@ function doGet(e) {
   const dateParam  = (e.parameter && e.parameter.date)  ? e.parameter.date  : null;
   const monthParam = (e.parameter && e.parameter.month) ? e.parameter.month : null;
 
+  if (!dateParam && !monthParam) return jsonResponse([]);
+
   // ใช้ header เป็นตัวหา column แทนการใช้ index ตายตัว
   const headers = data[0].map(h => String(h).trim());
   const col = {
@@ -23,6 +25,7 @@ function doGet(e) {
     phone:   headers.findIndex(h => h.includes("เบอร์") || h.includes("โทร")),
     count:   headers.findIndex(h => h.includes("จำนวน")),
     allergy: headers.findIndex(h => h.includes("แพ้")),
+    notes:   headers.findIndex(h => h.includes("หมายเหตุ")),
   };
 
   const result = [];
@@ -52,6 +55,7 @@ function doGet(e) {
       count:      col.count   >= 0 ? String(row[col.count]   || "1").trim() : "1",
       allergy:    allergy,
       hasAllergy: allergy !== "" && allergy !== "ไม่แพ้",
+      notes:      col.notes >= 0 ? String(row[col.notes] || "").trim() : "",
     });
   }
 

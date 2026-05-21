@@ -37,89 +37,7 @@
       min-height: 100dvh;
     }
 
-    /* ===== LOGIN ===== */
-    #login-screen {
-      min-height: 100dvh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--brand);
-    }
-
-    .login-box {
-      background: #fff;
-      border-radius: 16px;
-      padding: 40px 32px;
-      width: 320px;
-      text-align: center;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    }
-
-    .login-box h1 {
-      font-size: 28px;
-      font-weight: 700;
-      color: var(--brand);
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-
-    .login-box p {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 28px;
-      letter-spacing: 1px;
-    }
-
-    #pw-input {
-      width: 100%;
-      padding: 14px 16px;
-      font-size: 20px;
-      font-family: "Sarabun", sans-serif;
-      border: 2px solid var(--border);
-      border-radius: 10px;
-      text-align: center;
-      letter-spacing: 8px;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    #pw-input:focus { border-color: var(--brand); }
-    #pw-input.error-shake { border-color: var(--danger); animation: shake 0.3s ease; }
-
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25%       { transform: translateX(-6px); }
-      75%       { transform: translateX(6px); }
-    }
-
-    #login-btn {
-      margin-top: 16px;
-      width: 100%;
-      padding: 14px;
-      background: var(--brand);
-      color: #fff;
-      font-size: 15px;
-      font-weight: 600;
-      font-family: "Sarabun", sans-serif;
-      letter-spacing: 1px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    #login-btn:active { background: #122c46; }
-
-    #login-err {
-      margin-top: 12px;
-      font-size: 13px;
-      color: var(--danger);
-      min-height: 18px;
-    }
-
     /* ===== DASHBOARD ===== */
-    #dashboard { display: none; }
 
     .dash-header {
       background: var(--brand);
@@ -387,6 +305,13 @@
     .allergy-tag.has-allergy { background: var(--danger); color: #fff; }
     .allergy-tag.no-allergy  { background: var(--safe-bg); color: var(--safe); border: 1px solid #bbf7d0; }
 
+    .notes-text {
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
     /* States */
     .state-box {
       text-align: center;
@@ -438,18 +363,6 @@
 </head>
 <body>
 
-<!-- ===== LOGIN ===== -->
-<div id="login-screen">
-  <div class="login-box">
-    <h1>Siplor</h1>
-    <p>ระบบจองโต๊ะสำหรับพนักงาน</p>
-    <input type="password" id="pw-input" placeholder="••••" maxlength="20"
-           onkeydown="if(event.key==='Enter') login()">
-    <button id="login-btn" onclick="login()">เข้าสู่ระบบ</button>
-    <p id="login-err"></p>
-  </div>
-</div>
-
 <!-- ===== DASHBOARD ===== -->
 <div id="dashboard">
 
@@ -497,31 +410,11 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
   const API_URL  = "https://siplor.fxrkssr.workers.dev";
-  const PASSWORD = "7777";
   const MAX_MONTHS_AHEAD = 3;
 
   let mode         = "day";
   let currentMonth = "";
   let fp           = null; // Flatpickr instance
-
-  // ===== AUTH =====
-  function login() {
-    const val   = document.getElementById("pw-input").value;
-    const input = document.getElementById("pw-input");
-    const err   = document.getElementById("login-err");
-
-    if (val === PASSWORD) {
-      sessionStorage.setItem("siplor_auth", "1");
-      document.getElementById("login-screen").style.display = "none";
-      document.getElementById("dashboard").style.display = "block";
-      initDashboard();
-    } else {
-      err.textContent = "รหัสผ่านไม่ถูกต้อง";
-      input.value = "";
-      input.classList.add("error-shake");
-      setTimeout(() => input.classList.remove("error-shake"), 400);
-    }
-  }
 
   function initDashboard() {
     fp = flatpickr("#date-picker", {
@@ -660,6 +553,7 @@
           : bookings.map(renderCard).join("");
 
       } else {
+        if (!currentMonth) currentMonth = thisMonthISO();
         label.textContent = formatMonthTH(currentMonth);
         const res = await fetch(`${API_URL}?month=${currentMonth}&_=${Date.now()}`);
         if (!res.ok) throw new Error();
@@ -695,6 +589,7 @@
           <div class="guest-name">${escHtml(b.name)}</div>
           <div class="guest-phone">${escHtml(b.phone)}</div>
           ${allergyTag}
+          ${b.notes ? `<div class="notes-text">📝 ${escHtml(b.notes)}</div>` : ""}
         </div>
       </div>`;
   }
@@ -757,12 +652,7 @@
       .replace(/"/g, "&quot;");
   }
 
-  // ===== AUTO SESSION =====
-  if (sessionStorage.getItem("siplor_auth") === "1") {
-    document.getElementById("login-screen").style.display = "none";
-    document.getElementById("dashboard").style.display = "block";
-    initDashboard();
-  }
+  initDashboard();
 </script>
 </body>
 </html>
