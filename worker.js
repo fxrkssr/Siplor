@@ -1,6 +1,6 @@
 // Cloudflare Worker — วางใน Workers & Pages > Create Worker > Edit Code
 
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwB5EjfpV_Z91WmmcCLKiG3INcgjbAvnI5cBtxRDmU3haw-FV_VAEN-6p3rGLftTzA/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxXibI1qS2QH4CVabKbT3_jk_YEg8llP2xV9s_jGW2NYED6OpESBDM4gCoPB7w18JJa/exec";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
