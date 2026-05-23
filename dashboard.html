@@ -586,9 +586,9 @@
     const cls = b.hasAllergy ? " allergy" : "";
     const allergyTag = b.hasAllergy
       ? `<span class="allergy-tag has-allergy">&#9888; แพ้ ${escHtml(b.allergy)}</span>`
-      : (b.allergy
-          ? `<span class="allergy-tag no-allergy">&#10003; ไม่แพ้อาหาร</span>`
-          : `<span class="allergy-tag not-informed">&#8212; ไม่ได้แจ้ง</span>`);
+      : (!b.allergy || b.allergy === "ไม่ได้แจ้ง"
+          ? `<span class="allergy-tag not-informed">&#8212; ไม่ได้แจ้ง</span>`
+          : `<span class="allergy-tag no-allergy">&#10003; ไม่แพ้อาหาร</span>`);
 
     return `
       <div class="booking-card${cls}">

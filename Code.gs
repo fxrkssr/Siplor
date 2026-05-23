@@ -54,7 +54,7 @@ function doGet(e) {
       phone:      col.phone   >= 0 ? String(row[col.phone]   || "").trim() : "",
       count:      col.count   >= 0 ? String(row[col.count]   || "1").trim() : "1",
       allergy:    allergy,
-      hasAllergy: allergy !== "" && allergy !== "ไม่แพ้",
+      hasAllergy: allergy !== "" && allergy !== "ไม่แพ้" && allergy !== "ไม่ได้แจ้ง",
       notes:      col.notes >= 0 ? String(row[col.notes] || "").trim() : "",
     });
   }
