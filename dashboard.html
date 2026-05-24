@@ -174,6 +174,26 @@
       letter-spacing: 1px;
     }
 
+    /* Month sub-tabs */
+    .month-subtabs { display: flex; gap: 6px; margin-top: 10px; }
+
+    .month-subtab {
+      flex: 1;
+      padding: 6px 8px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.55);
+      font-family: "Sarabun", sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .month-subtab.active { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.4); color: #fff; }
+
     /* ===== CONTENT ===== */
     .content { padding: 16px; max-width: 600px; margin: 0 auto; }
 
@@ -520,6 +540,11 @@
       <div class="month-label" id="month-label"></div>
       <button class="nav-btn" id="month-next" onclick="shiftMonth(1)">&#8250;</button>
     </div>
+
+    <div class="month-subtabs" id="month-subtabs" style="display:none">
+      <div class="month-subtab active" id="subtab-upcoming" onclick="setMonthTab('upcoming')">📌 ยังไม่ได้มา</div>
+      <div class="month-subtab"        id="subtab-all"      onclick="setMonthTab('all')">📋 ทั้งหมด</div>
+    </div>
   </div>
 
   <div class="content">
@@ -632,6 +657,7 @@
 
   let mode           = "day";
   let currentMonth   = "";
+  let monthTab       = "upcoming";
   let fp             = null;
   let authed         = false;
   let editingRow     = null;
@@ -734,7 +760,20 @@
     if (m === "month") {
       currentMonth = thisMonthISO();
       updateMonthNav();
+      monthTab = "upcoming";
+      document.getElementById("month-subtabs").style.display = "flex";
+      document.getElementById("subtab-upcoming").classList.add("active");
+      document.getElementById("subtab-all").classList.remove("active");
+    } else {
+      document.getElementById("month-subtabs").style.display = "none";
     }
+    loadBookings();
+  }
+
+  function setMonthTab(tab) {
+    monthTab = tab;
+    document.getElementById("subtab-upcoming").classList.toggle("active", tab === "upcoming");
+    document.getElementById("subtab-all").classList.toggle("active",      tab === "all");
     loadBookings();
   }
 
@@ -813,10 +852,13 @@
         const res = await fetch(`${API_URL}?month=${currentMonth}&_=${Date.now()}`);
         if (!res.ok) throw new Error();
         bookings = await res.json();
-        const total = bookings.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
-        document.getElementById("total-count").textContent = total;
         bookings.forEach(b => _bookingsByRow[b._row] = b);
-        list.innerHTML = bookings.length === 0 ? renderEmptyMonth() : renderMonthGroups(bookings);
+        const filtered = monthTab === "upcoming"
+          ? bookings.filter(b => b.date >= todayISO())
+          : bookings;
+        const total = filtered.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
+        document.getElementById("total-count").textContent = total;
+        list.innerHTML = filtered.length === 0 ? renderEmptyMonth() : renderMonthGroups(filtered);
       }
     } catch (e) {
       list.innerHTML = renderError();
