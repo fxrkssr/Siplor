@@ -694,7 +694,9 @@
     const [y, m, d] = iso.split("-");
     const months = ["","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.",
                     "ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
-    return `${parseInt(d)} ${months[parseInt(m)]} ${parseInt(y) + 543}`;
+    const days   = ["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัส","ศุกร์","เสาร์"];
+    const dow    = new Date(iso + "T00:00:00").getDay();
+    return `${days[dow]} ${parseInt(d)} ${months[parseInt(m)]} ${parseInt(y) + 543}`;
   }
 
   function formatMonthTH(ym) {
@@ -982,6 +984,11 @@
 
     if (!date || !name || !phone) {
       alert("กรุณากรอกวันที่ ชื่อ และเบอร์โทรให้ครบ");
+      return;
+    }
+
+    if (new Date(date + "T00:00:00").getDay() === 2) {
+      alert("❌ วันอังคาร — ร้านปิด ไม่สามารถรับการจองได้");
       return;
     }
 
