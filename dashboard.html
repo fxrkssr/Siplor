@@ -544,6 +544,7 @@
 
     <div class="month-subtabs" id="month-subtabs" style="display:none">
       <div class="month-subtab active" id="subtab-upcoming" onclick="setMonthTab('upcoming')">📌 ยังไม่ได้มา</div>
+      <div class="month-subtab"        id="subtab-visited"  onclick="setMonthTab('visited')">✅ ใช้บริการแล้ว</div>
       <div class="month-subtab"        id="subtab-all"      onclick="setMonthTab('all')">📋 ทั้งหมด</div>
     </div>
   </div>
@@ -774,6 +775,7 @@
   function setMonthTab(tab) {
     monthTab = tab;
     document.getElementById("subtab-upcoming").classList.toggle("active", tab === "upcoming");
+    document.getElementById("subtab-visited").classList.toggle("active",  tab === "visited");
     document.getElementById("subtab-all").classList.toggle("active",      tab === "all");
     loadBookings();
   }
@@ -854,8 +856,11 @@
         if (!res.ok) throw new Error();
         bookings = await res.json();
         bookings.forEach(b => _bookingsByRow[b._row] = b);
+        const today    = todayISO();
         const filtered = monthTab === "upcoming"
-          ? bookings.filter(b => b.date >= todayISO())
+          ? bookings.filter(b => b.date >= today)
+          : monthTab === "visited"
+          ? bookings.filter(b => b.date < today)
           : bookings;
         const total = filtered.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
         document.getElementById("total-count").textContent = total;
