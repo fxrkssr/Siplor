@@ -40,7 +40,7 @@ function doGet(e) {
     result.push({
       _row:       i + 1,
       date:       dateStr,
-      time:       col.time    >= 0 ? String(row[col.time]    || "").trim() : "",
+      time:       col.time    >= 0 ? formatTime(row[col.time]) : "",
       name:       col.name    >= 0 ? String(row[col.name]    || "").trim() : "",
       phone:      col.phone   >= 0 ? String(row[col.phone]   || "").trim() : "",
       count:      col.count   >= 0 ? String(row[col.count]   || "1").trim() : "1",
@@ -103,6 +103,14 @@ function doPost(e) {
   } catch (err) {
     return jsonResponse({ error: err.message });
   }
+}
+
+function formatTime(val) {
+  if (!val) return "";
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, "Asia/Bangkok", "HH:mm");
+  }
+  return String(val).trim();
 }
 
 function getColMap(headers) {
