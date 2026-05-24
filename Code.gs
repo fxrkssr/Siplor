@@ -16,19 +16,9 @@ function doGet(e) {
 
   if (!dateParam && !monthParam) return jsonResponse([]);
 
-  // ใช้ header เป็นตัวหา column แทนการใช้ index ตายตัว
   const headers = data[0].map(h => String(h).trim());
-  const col = {
-    date:    headers.findIndex(h => h.includes("วันที่")),
-    time:    headers.findIndex(h => h.includes("เวลา")),
-    name:    headers.findIndex(h => h.includes("ชื่อ")),
-    phone:   headers.findIndex(h => h.includes("เบอร์") || h.includes("โทร")),
-    count:   headers.findIndex(h => h.includes("จำนวน")),
-    allergy: headers.findIndex(h => h.includes("แพ้")),
-    notes:   headers.findIndex(h => h.includes("หมายเหตุ")),
-  };
-
-  const result = [];
+  const col     = getColMap(headers);
+  const result  = [];
 
   for (let i = 1; i < data.length; i++) {
     const row     = data[i];
@@ -48,6 +38,7 @@ function doGet(e) {
     const allergy = col.allergy >= 0 ? String(row[col.allergy] || "").trim() : "";
 
     result.push({
+      _row:       i + 1,
       date:       dateStr,
       time:       col.time    >= 0 ? String(row[col.time]    || "").trim() : "",
       name:       col.name    >= 0 ? String(row[col.name]    || "").trim() : "",
@@ -60,8 +51,70 @@ function doGet(e) {
   }
 
   result.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
-
   return jsonResponse(result);
+}
+
+function doPost(e) {
+  try {
+    const body   = JSON.parse(e.postData.contents);
+    const ss     = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet  = ss.getSheets()[0];
+    const data   = sheet.getDataRange().getValues();
+    const col    = getColMap(data[0].map(h => String(h).trim()));
+    const nCols  = data[0].length;
+
+    if (body.action === "add") {
+      const newRow = new Array(nCols).fill("");
+      newRow[0] = new Date();
+      if (col.date    >= 0) newRow[col.date]    = body.date;
+      if (col.time    >= 0) newRow[col.time]     = body.time;
+      if (col.name    >= 0) newRow[col.name]     = body.name;
+      if (col.phone   >= 0) newRow[col.phone]    = body.phone;
+      if (col.count   >= 0) newRow[col.count]    = body.count;
+      if (col.allergy >= 0) newRow[col.allergy]  = body.allergy;
+      if (col.notes   >= 0) newRow[col.notes]    = body.notes || "";
+      sheet.appendRow(newRow);
+      return jsonResponse({ ok: true });
+    }
+
+    const rowIdx = parseInt(body._row);
+    if (isNaN(rowIdx) || rowIdx < 2) return jsonResponse({ error: "invalid row" });
+
+    if (body.action === "delete") {
+      sheet.deleteRow(rowIdx);
+      return jsonResponse({ ok: true });
+    }
+
+    if (body.action === "edit") {
+      const r    = sheet.getRange(rowIdx, 1, 1, nCols);
+      const vals = r.getValues()[0];
+      if (col.date    >= 0) vals[col.date]    = body.date;
+      if (col.time    >= 0) vals[col.time]     = body.time;
+      if (col.name    >= 0) vals[col.name]     = body.name;
+      if (col.phone   >= 0) vals[col.phone]    = body.phone;
+      if (col.count   >= 0) vals[col.count]    = body.count;
+      if (col.allergy >= 0) vals[col.allergy]  = body.allergy;
+      if (col.notes   >= 0) vals[col.notes]    = body.notes || "";
+      r.setValues([vals]);
+      return jsonResponse({ ok: true });
+    }
+
+    return jsonResponse({ error: "unknown action" });
+  } catch (err) {
+    return jsonResponse({ error: err.message });
+  }
+}
+
+function getColMap(headers) {
+  return {
+    date:    headers.findIndex(h => h.includes("วันที่")),
+    time:    headers.findIndex(h => h.includes("เวลา")),
+    name:    headers.findIndex(h => h.includes("ชื่อ")),
+    phone:   headers.findIndex(h => h.includes("เบอร์") || h.includes("โทร")),
+    count:   headers.findIndex(h => h.includes("จำนวน")),
+    allergy: headers.findIndex(h => h.includes("แพ้")),
+    notes:   headers.findIndex(h => h.includes("หมายเหตุ")),
+  };
 }
 
 function jsonResponse(data) {
@@ -84,7 +137,6 @@ function setupTuesdayBlock() {
   SpreadsheetApp.getUi().alert("ติดตั้ง trigger บล็อกวันอังคารสำเร็จ!");
 }
 
-// trigger นี้ทำงานอัตโนมัติทุกครั้งที่มีการ submit form
 function blockTuesdayBookings(e) {
   const sheet = e.range.getSheet();
   const row   = e.range.getRow();
@@ -97,12 +149,11 @@ function blockTuesdayBookings(e) {
   if (!dateVal) return;
 
   const bkkDate = new Date(new Date(dateVal).toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
-  if (bkkDate.getDay() === 2) { // 2 = อังคาร
+  if (bkkDate.getDay() === 2) {
     sheet.deleteRow(row);
   }
 }
 
-// รันฟังก์ชันนี้ครั้งเดียวเพื่อสร้าง Google Form อัตโนมัติ
 function createBookingForm() {
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
   const form = FormApp.create("Siplor — จองโต๊ะ");
@@ -125,7 +176,7 @@ function createBookingForm() {
     .setChoiceValues(["1","2","3","4","5","6","7","8","9","10","10+"])
     .setRequired(true);
   form.addListItem().setTitle("ข้อมูลแพ้อาหาร")
-    .setChoiceValues(["ไม่แพ้","อาหารทะเล","ถั่ว","นม","กลูเตน","อื่นๆ (ระบุในหมายเหตุ)"])
+    .setChoiceValues(["ไม่แพ้","ไม่ได้แจ้ง","อาหารทะเล","ถั่ว","นม","กลูเตน","อื่นๆ (ระบุในหมายเหตุ)"])
     .setRequired(true);
   form.addParagraphTextItem().setTitle("หมายเหตุเพิ่มเติม").setRequired(false);
 

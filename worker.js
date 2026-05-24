@@ -3,8 +3,9 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxXibI1qS2QH4CVabKbT3_jk_YEg8llP2xV9s_jGW2NYED6OpESBDM4gCoPB7w18JJa/exec";
 
 const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Origin":  "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
   "Content-Type": "application/json; charset=utf-8",
 };
 
@@ -14,7 +15,20 @@ export default {
       return new Response(null, { status: 204, headers: CORS });
     }
 
-    const url = new URL(request.url);
+    if (request.method === "POST") {
+      const body = await request.text();
+      const res  = await fetch(APPS_SCRIPT_URL, {
+        method:   "POST",
+        headers:  { "Content-Type": "application/json" },
+        body,
+        redirect: "follow",
+      });
+      const text = await res.text();
+      return new Response(text, { headers: { ...CORS, "Cache-Control": "no-store" } });
+    }
+
+    // GET
+    const url   = new URL(request.url);
     const date  = url.searchParams.get("date");
     const month = url.searchParams.get("month");
 
@@ -26,10 +40,7 @@ export default {
     const text = await res.text();
 
     return new Response(text, {
-      headers: {
-        ...CORS,
-        "Cache-Control": "no-store",
-      },
+      headers: { ...CORS, "Cache-Control": "no-store" },
     });
   },
 };
