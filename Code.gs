@@ -42,7 +42,7 @@ function doGet(e) {
       date:       dateStr,
       time:       col.time    >= 0 ? formatTime(row[col.time]) : "",
       name:       col.name    >= 0 ? String(row[col.name]    || "").trim() : "",
-      phone:      col.phone   >= 0 ? String(row[col.phone]   || "").trim() : "",
+      phone:      col.phone   >= 0 ? formatPhone(row[col.phone]) : "",
       count:      col.count   >= 0 ? String(row[col.count]   || "1").trim() : "1",
       allergy:    allergy,
       hasAllergy: allergy !== "" && allergy !== "ไม่แพ้" && allergy !== "ไม่ได้แจ้ง",
@@ -103,6 +103,12 @@ function doPost(e) {
   } catch (err) {
     return jsonResponse({ error: err.message });
   }
+}
+
+function formatPhone(val) {
+  if (!val && val !== 0) return "";
+  if (typeof val === "number") return "0" + Math.round(val);
+  return String(val).trim();
 }
 
 function formatTime(val) {
