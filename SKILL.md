@@ -138,6 +138,31 @@ function isPast(b) {
 
 ---
 
+## Search (🔍)
+
+- กดปุ่ม 🔍 มุมขวาบน → ช่องค้นหาปรากฏ + โหลด data ทุกวัน (`?all=1`) อัตโนมัติ
+- พิมพ์ทันที → ผลลัพธ์ขึ้น real-time ไม่ต้องกดปุ่ม
+- ค้นหาได้จาก: ชื่อ, เบอร์โทร (ตัดขีดออก), หมายเหตุ
+- ผลลัพธ์แสดงเป็น flat list — แต่ละ card มีป้าย 📅 วันที่ชัดเจน
+- ไม่ต้องรู้ล่วงหน้าว่าลูกค้ามาวันไหน เดือนไหน
+- `_allBookings` — cache ที่ใช้ตอน search (โหลดจาก `?all=1`)
+- `loadMonthForSearch()` — fetch `?all=1`, เก็บใน `_allBookings`, render loading ระหว่างรอ
+- `filterBookings(bookings)` — filter จาก `searchQuery`, normalize phone (ตัด `-` ออก)
+- `renderCard(b, showDate)` — `showDate=true` จะแสดง `.card-date` badge บน card
+
+### worker.js — ต้องส่ง `?all=1` ผ่านด้วย
+```js
+const all = url.searchParams.get("all");
+const upstream = all
+  ? `${APPS_SCRIPT_URL}?all=1`
+  : month
+  ? `${APPS_SCRIPT_URL}?month=${month}`
+  : `${APPS_SCRIPT_URL}?date=${date || todayBKK()}`;
+```
+> ⚠️ ถ้าไม่อัปเดต Worker จะ default เป็น `?date=วันนี้` ทำให้ search คืนข้อมูลแค่วันนี้
+
+---
+
 ## Known Issues / Notes
 
 - `_row` index ใช้ตอน load หน้า ถ้ามีคนลบ row พร้อมกัน อาจ edit ผิด row (edge case, low risk)
