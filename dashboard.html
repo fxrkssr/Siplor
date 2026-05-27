@@ -195,7 +195,7 @@
     .month-subtab.active { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.4); color: #fff; }
 
     /* ===== CONTENT ===== */
-    .content { padding: 16px; max-width: 600px; margin: 0 auto; }
+    .content { padding: 16px 16px 150px; max-width: 600px; margin: 0 auto; }
 
     .closed-banner {
       background: #1e293b;
@@ -691,6 +691,17 @@
 
   function thisMonthISO() { return todayISO().substring(0, 7); }
 
+  function nowTimeBKK() {
+    return new Date().toLocaleTimeString("sv-SE", { timeZone: "Asia/Bangkok" }).substring(0, 5);
+  }
+
+  function isPast(b) {
+    const today = todayISO();
+    if (b.date < today) return true;
+    if (b.date > today) return false;
+    return b.time <= nowTimeBKK();
+  }
+
   function formatDateTH(iso) {
     const [y, m, d] = iso.split("-");
     const months = ["","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.",
@@ -856,11 +867,10 @@
         if (!res.ok) throw new Error();
         bookings = await res.json();
         bookings.forEach(b => _bookingsByRow[b._row] = b);
-        const today    = todayISO();
         const filtered = monthTab === "upcoming"
-          ? bookings.filter(b => b.date >= today)
+          ? bookings.filter(b => !isPast(b))
           : monthTab === "visited"
-          ? bookings.filter(b => b.date < today)
+          ? bookings.filter(b => isPast(b))
           : bookings;
         const total = filtered.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
         document.getElementById("total-count").textContent = total;
@@ -882,7 +892,7 @@
           ? `<span class="allergy-tag not-informed">&#8212; ไม่ได้แจ้ง</span>`
           : `<span class="allergy-tag no-allergy">&#10003; ไม่แพ้อาหาร</span>`);
 
-    const editBtns = authed ? `
+    const editBtns = (authed && !isPast(b)) ? `
       <div class="card-actions">
         <button class="btn-icon btn-edit"   onclick="openBookingForm(${b._row})" title="แก้ไข">✏️</button>
         <button class="btn-icon btn-delete" onclick="openDeleteConfirm(${b._row})" title="ลบ">🗑️</button>
