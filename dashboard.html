@@ -858,18 +858,31 @@
     renderFromCache();
   }
 
-  function toggleSearch() {
+  async function toggleSearch() {
     const row = document.getElementById("search-row");
     const btn = document.getElementById("search-btn");
     const open = row.style.display === "none";
     row.style.display = open ? "block" : "none";
     btn.classList.toggle("active", open);
     if (open) {
+      await loadMonthForSearch();
       document.getElementById("search-input").focus();
     } else {
       onSearch("");
       document.getElementById("search-input").value = "";
+      loadBookings();
     }
+  }
+
+  async function loadMonthForSearch() {
+    try {
+      const month = mode === "month" ? currentMonth : thisMonthISO();
+      const res = await fetch(`${API_URL}?month=${month}&_=${Date.now()}`);
+      if (!res.ok) return;
+      const bookings = await res.json();
+      bookings.forEach(b => _bookingsByRow[b._row] = b);
+      _allBookings = bookings;
+    } catch(e) {}
   }
 
   function onSearch(val) {
@@ -903,13 +916,14 @@
     const total = filtered.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
     document.getElementById("total-count").textContent = total;
 
-    if (mode === "day") {
+    if (mode === "day" && !searchQuery) {
       const date = document.getElementById("date-picker").value;
       label.textContent = total > 0 ? `${formatDateTH(date)} — ${total} คน` : formatDateTH(date);
-      list.innerHTML = filtered.length === 0
-        ? (searchQuery ? renderNoResult() : renderEmptyDay(date))
-        : filtered.map(renderCard).join("");
+      list.innerHTML = filtered.length === 0 ? renderEmptyDay(date) : filtered.map(renderCard).join("");
     } else {
+      const date = mode === "day" ? document.getElementById("date-picker").value : null;
+      if (searchQuery) label.textContent = `ผลค้นหา — ${total} คน`;
+      else if (date) label.textContent = total > 0 ? `${formatDateTH(date)} — ${total} คน` : formatDateTH(date);
       list.innerHTML = filtered.length === 0
         ? (searchQuery ? renderNoResult() : renderEmptyMonth())
         : renderMonthGroups(filtered);
