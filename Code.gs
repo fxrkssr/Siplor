@@ -13,8 +13,9 @@ function doGet(e) {
 
   const dateParam  = (e.parameter && e.parameter.date)  ? e.parameter.date  : null;
   const monthParam = (e.parameter && e.parameter.month) ? e.parameter.month : null;
+  const allParam   = (e.parameter && e.parameter.all)   ? true              : false;
 
-  if (!dateParam && !monthParam) return jsonResponse([]);
+  if (!dateParam && !monthParam && !allParam) return jsonResponse([]);
 
   const headers = data[0].map(h => String(h).trim());
   const col     = getColMap(headers);
@@ -34,6 +35,7 @@ function doGet(e) {
 
     if (dateParam  && dateStr !== dateParam)           continue;
     if (monthParam && !dateStr.startsWith(monthParam)) continue;
+    // allParam = true → no filter, return everything
 
     const allergy = col.allergy >= 0 ? String(row[col.allergy] || "").trim() : "";
 
