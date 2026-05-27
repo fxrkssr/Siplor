@@ -91,6 +91,28 @@
 
     .lock-btn.unlocked { background: var(--gold); border-color: var(--gold); }
 
+    .search-row {
+      margin-top: 10px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 8px 14px;
+      font-family: "Sarabun", sans-serif;
+      font-size: 15px;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      outline: none;
+    }
+
+    .search-input::placeholder { color: rgba(255,255,255,0.45); }
+    .search-input:focus { border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.15); }
+
+    .search-btn { font-size: 18px; }
+    .search-btn.active { background: rgba(255,255,255,0.25) !important; border-color: rgba(255,255,255,0.4) !important; }
+
     /* Mode tabs */
     .mode-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
 
@@ -554,8 +576,15 @@
       <span class="brand-name">Siplor</span>
       <div class="header-right">
         <div class="summary-chip"><span id="total-count">—</span> คน</div>
+        <button class="lock-btn search-btn" id="search-btn" onclick="toggleSearch()">🔍</button>
         <button class="lock-btn" id="lock-btn" onclick="openPwdModal()">🔒</button>
       </div>
+    </div>
+
+    <div class="search-row" id="search-row" style="display:none">
+      <input type="text" id="search-input" class="search-input"
+             placeholder="ค้นหาชื่อ เบอร์โทร หมายเหตุ..."
+             oninput="onSearch(this.value)">
     </div>
 
     <div class="mode-tabs">
@@ -694,6 +723,8 @@
   let currentMonth   = "";
   let monthTab       = "upcoming";
   let compact        = false;
+  let searchQuery    = "";
+  let _allBookings   = [];
   let fp             = null;
   let authed         = false;
   let editingRow     = null;
@@ -824,7 +855,63 @@
     document.getElementById("subtab-upcoming").classList.toggle("active", tab === "upcoming");
     document.getElementById("subtab-visited").classList.toggle("active",  tab === "visited");
     document.getElementById("subtab-all").classList.toggle("active",      tab === "all");
-    loadBookings();
+    renderFromCache();
+  }
+
+  function toggleSearch() {
+    const row = document.getElementById("search-row");
+    const btn = document.getElementById("search-btn");
+    const open = row.style.display === "none";
+    row.style.display = open ? "block" : "none";
+    btn.classList.toggle("active", open);
+    if (open) {
+      document.getElementById("search-input").focus();
+    } else {
+      onSearch("");
+      document.getElementById("search-input").value = "";
+    }
+  }
+
+  function onSearch(val) {
+    searchQuery = val.trim().toLowerCase();
+    renderFromCache();
+  }
+
+  function filterBookings(bookings) {
+    if (!searchQuery) return bookings;
+    return bookings.filter(b =>
+      b.name.toLowerCase().includes(searchQuery) ||
+      b.phone.includes(searchQuery) ||
+      (b.notes && b.notes.toLowerCase().includes(searchQuery))
+    );
+  }
+
+  function renderFromCache() {
+    const list  = document.getElementById("booking-list");
+    const label = document.getElementById("section-label");
+
+    let filtered = filterBookings(_allBookings);
+
+    if (mode === "month") {
+      filtered = monthTab === "upcoming" ? filtered.filter(b => !isPast(b))
+               : monthTab === "visited"  ? filtered.filter(b => isPast(b))
+               : filtered;
+    }
+
+    const total = filtered.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
+    document.getElementById("total-count").textContent = total;
+
+    if (mode === "day") {
+      const date = document.getElementById("date-picker").value;
+      label.textContent = total > 0 ? `${formatDateTH(date)} — ${total} คน` : formatDateTH(date);
+      list.innerHTML = filtered.length === 0
+        ? (searchQuery ? renderNoResult() : renderEmptyDay(date))
+        : filtered.map(renderCard).join("");
+    } else {
+      list.innerHTML = filtered.length === 0
+        ? (searchQuery ? renderNoResult() : renderEmptyMonth())
+        : renderMonthGroups(filtered);
+    }
   }
 
   function toggleCompact() {
@@ -901,13 +988,10 @@
         const res = await fetch(`${API_URL}?date=${date}&_=${Date.now()}`);
         if (!res.ok) throw new Error();
         bookings = await res.json();
-        const total = bookings.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
-        document.getElementById("total-count").textContent = total;
-        label.textContent = total > 0
-          ? `${formatDateTH(date)} — ${total} คน`
-          : formatDateTH(date);
         bookings.forEach(b => _bookingsByRow[b._row] = b);
-        list.innerHTML = bookings.length === 0 ? renderEmptyDay(date) : bookings.map(renderCard).join("");
+        _allBookings = bookings;
+        label.textContent = formatDateTH(date);
+        renderFromCache();
       } else {
         if (!currentMonth) currentMonth = thisMonthISO();
         label.textContent = formatMonthTH(currentMonth);
@@ -915,14 +999,8 @@
         if (!res.ok) throw new Error();
         bookings = await res.json();
         bookings.forEach(b => _bookingsByRow[b._row] = b);
-        const filtered = monthTab === "upcoming"
-          ? bookings.filter(b => !isPast(b))
-          : monthTab === "visited"
-          ? bookings.filter(b => isPast(b))
-          : bookings;
-        const total = filtered.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
-        document.getElementById("total-count").textContent = total;
-        list.innerHTML = filtered.length === 0 ? renderEmptyMonth() : renderMonthGroups(filtered);
+        _allBookings = bookings;
+        renderFromCache();
       }
     } catch (e) {
       list.innerHTML = renderError();
@@ -1000,6 +1078,14 @@
       <div class="icon">📆</div>
       <h3>ไม่มีการจองในเดือนนี้</h3>
       <p>ยังไม่มีลูกค้าจองในเดือนที่เลือก</p>
+    </div>`;
+  }
+
+  function renderNoResult() {
+    return `<div class="state-box">
+      <div class="icon">🔍</div>
+      <h3>ไม่พบข้อมูล</h3>
+      <p>ลองค้นหาด้วยคำอื่น</p>
     </div>`;
   }
 
