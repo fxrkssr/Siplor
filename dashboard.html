@@ -1092,7 +1092,7 @@
             <span>${formatDateTH(date)}</span>
             <span class="date-group-count">${total} คน</span>
           </div>
-          ${list.map(renderCard).join("")}
+          ${list.map(b => renderCard(b)).join("")}
         </div>`;
     }).join("");
   }
