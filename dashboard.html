@@ -858,6 +858,9 @@
         bookings = await res.json();
         const total = bookings.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
         document.getElementById("total-count").textContent = total;
+        label.textContent = total > 0
+          ? `${formatDateTH(date)} — ${total} คน`
+          : formatDateTH(date);
         bookings.forEach(b => _bookingsByRow[b._row] = b);
         list.innerHTML = bookings.length === 0 ? renderEmptyDay(date) : bookings.map(renderCard).join("");
       } else {
