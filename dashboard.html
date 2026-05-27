@@ -879,11 +879,13 @@
 
   function filterBookings(bookings) {
     if (!searchQuery) return bookings;
-    return bookings.filter(b =>
-      b.name.toLowerCase().includes(searchQuery) ||
-      b.phone.includes(searchQuery) ||
-      (b.notes && b.notes.toLowerCase().includes(searchQuery))
-    );
+    const qPhone = searchQuery.replace(/[-\s]/g, "");
+    return bookings.filter(b => {
+      const phone = b.phone.replace(/[-\s]/g, "");
+      return b.name.toLowerCase().includes(searchQuery) ||
+             phone.includes(qPhone) ||
+             (b.notes && b.notes.toLowerCase().includes(searchQuery));
+    });
   }
 
   function renderFromCache() {
