@@ -31,8 +31,11 @@ export default {
     const url   = new URL(request.url);
     const date  = url.searchParams.get("date");
     const month = url.searchParams.get("month");
+    const all   = url.searchParams.get("all");
 
-    const upstream = month
+    const upstream = all
+      ? `${APPS_SCRIPT_URL}?all=1`
+      : month
       ? `${APPS_SCRIPT_URL}?month=${month}`
       : `${APPS_SCRIPT_URL}?date=${date || todayBKK()}`;
 
