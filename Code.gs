@@ -42,13 +42,17 @@ function doGet(e) {
     result.push({
       _row:       i + 1,
       date:       dateStr,
-      time:       col.time    >= 0 ? formatTime(row[col.time]) : "",
-      name:       col.name    >= 0 ? String(row[col.name]    || "").trim() : "",
-      phone:      col.phone   >= 0 ? formatPhone(row[col.phone]) : "",
-      count:      col.count   >= 0 ? String(row[col.count]   || "1").trim() : "1",
+      time:       col.time     >= 0 ? formatTime(row[col.time]) : "",
+      name:       col.name     >= 0 ? String(row[col.name]    || "").trim() : "",
+      phone:      col.phone    >= 0 ? formatPhone(row[col.phone]) : "",
+      count:      col.count    >= 0 ? String(row[col.count]   || "1").trim() : "1",
       allergy:    allergy,
       hasAllergy: allergy !== "" && allergy !== "ไม่แพ้" && allergy !== "ไม่ได้แจ้ง",
-      notes:      col.notes >= 0 ? String(row[col.notes] || "").trim() : "",
+      notes:      col.notes    >= 0 ? String(row[col.notes]   || "").trim() : "",
+      addedBy:    col.addedBy  >= 0 ? String(row[col.addedBy]  || "").trim() : "",
+      addedAt:    col.addedAt  >= 0 ? String(row[col.addedAt]  || "").trim() : "",
+      editedBy:   col.editedBy >= 0 ? String(row[col.editedBy] || "").trim() : "",
+      editedAt:   col.editedAt >= 0 ? String(row[col.editedAt] || "").trim() : "",
     });
   }
 
@@ -73,8 +77,10 @@ function doPost(e) {
       if (col.name    >= 0) newRow[col.name]     = body.name;
       if (col.phone   >= 0) newRow[col.phone]    = body.phone;
       if (col.count   >= 0) newRow[col.count]    = body.count;
-      if (col.allergy >= 0) newRow[col.allergy]  = body.allergy;
-      if (col.notes   >= 0) newRow[col.notes]    = body.notes || "";
+      if (col.allergy  >= 0) newRow[col.allergy]  = body.allergy;
+      if (col.notes    >= 0) newRow[col.notes]    = body.notes || "";
+      if (col.addedBy  >= 0) newRow[col.addedBy]  = body.addedBy  || "";
+      if (col.addedAt  >= 0) newRow[col.addedAt]  = body.addedAt  || "";
       sheet.appendRow(newRow);
       return jsonResponse({ ok: true });
     }
@@ -95,8 +101,10 @@ function doPost(e) {
       if (col.name    >= 0) vals[col.name]     = body.name;
       if (col.phone   >= 0) vals[col.phone]    = body.phone;
       if (col.count   >= 0) vals[col.count]    = body.count;
-      if (col.allergy >= 0) vals[col.allergy]  = body.allergy;
-      if (col.notes   >= 0) vals[col.notes]    = body.notes || "";
+      if (col.allergy  >= 0) vals[col.allergy]  = body.allergy;
+      if (col.notes    >= 0) vals[col.notes]    = body.notes || "";
+      if (col.editedBy >= 0) vals[col.editedBy] = body.editedBy || "";
+      if (col.editedAt >= 0) vals[col.editedAt] = body.editedAt || "";
       r.setValues([vals]);
       return jsonResponse({ ok: true });
     }
@@ -123,13 +131,17 @@ function formatTime(val) {
 
 function getColMap(headers) {
   return {
-    date:    headers.findIndex(h => h.includes("วันที่")),
-    time:    headers.findIndex(h => h.includes("เวลา")),
-    name:    headers.findIndex(h => h.includes("ชื่อ")),
-    phone:   headers.findIndex(h => h.includes("เบอร์") || h.includes("โทร")),
-    count:   headers.findIndex(h => h.includes("จำนวน")),
-    allergy: headers.findIndex(h => h.includes("แพ้")),
-    notes:   headers.findIndex(h => h.includes("หมายเหตุ")),
+    date:     headers.findIndex(h => h.includes("วันที่")),
+    time:     headers.findIndex(h => h.includes("เวลา")),
+    name:     headers.findIndex(h => h.includes("ชื่อ")),
+    phone:    headers.findIndex(h => h.includes("เบอร์") || h.includes("โทร")),
+    count:    headers.findIndex(h => h.includes("จำนวน")),
+    allergy:  headers.findIndex(h => h.includes("แพ้")),
+    notes:    headers.findIndex(h => h.includes("หมายเหตุ")),
+    addedBy:  headers.findIndex(h => h === "เพิ่มโดย"),
+    addedAt:  headers.findIndex(h => h === "เพิ่มเมื่อ"),
+    editedBy: headers.findIndex(h => h === "แก้ไขโดย"),
+    editedAt: headers.findIndex(h => h === "แก้ไขเมื่อ"),
   };
 }
 

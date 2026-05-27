@@ -568,6 +568,32 @@
       color: #fff;
     }
 
+    .user-tag {
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      background: var(--gold);
+      padding: 4px 10px;
+      border-radius: 12px;
+      letter-spacing: 0.3px;
+    }
+
+    .audit-info {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .audit-info span {
+      display: inline-block;
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      margin-right: 4px;
+    }
+
     .pwd-error { color: var(--danger); font-size: 13px; font-weight: 600; margin-top: 8px; }
 
     @keyframes shake {
@@ -588,6 +614,7 @@
       <span class="brand-name">Siplor</span>
       <div class="header-right">
         <div class="summary-chip"><span id="total-count">—</span> คน</div>
+        <span id="user-tag" class="user-tag" style="display:none"></span>
         <button class="lock-btn search-btn" id="search-btn" onclick="toggleSearch()">🔍</button>
         <button class="lock-btn" id="lock-btn" onclick="openPwdModal()">🔒</button>
       </div>
@@ -724,7 +751,10 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
   const API_URL  = "https://siplor.fxrkssr.workers.dev";
-  const PASSWORD = "7777@";
+  const USERS = {
+    "7777@": "แอดมิน 1",
+    "2608@": "แอดมิน 2",
+  };
   const MAX_MONTHS_AHEAD = 3;
   const TIMES = [
     "17:00","17:30","18:00","18:30","19:00","19:30",
@@ -739,6 +769,7 @@
   let _allBookings   = [];
   let fp             = null;
   let authed         = false;
+  let currentUser    = "";
   let editingRow     = null;
   let deleteTarget   = null;
   let _bookingsByRow = {};
@@ -817,12 +848,18 @@
   }
 
   function submitPassword() {
-    if (document.getElementById("pwd-input").value === PASSWORD) {
-      authed = true;
+    const val  = document.getElementById("pwd-input").value;
+    const name = USERS[val];
+    if (name) {
+      authed      = true;
+      currentUser = name;
       closePwdModal();
       document.getElementById("lock-btn").textContent = "🔓";
       document.getElementById("lock-btn").classList.add("unlocked");
       document.getElementById("add-fab").classList.add("visible");
+      const tag = document.getElementById("user-tag");
+      tag.textContent = name;
+      tag.style.display = "inline";
       loadBookings();
     } else {
       const input = document.getElementById("pwd-input");
@@ -834,10 +871,12 @@
   }
 
   function logout() {
-    authed = false;
+    authed      = false;
+    currentUser = "";
     document.getElementById("lock-btn").textContent = "🔒";
     document.getElementById("lock-btn").classList.remove("unlocked");
     document.getElementById("add-fab").classList.remove("visible");
+    document.getElementById("user-tag").style.display = "none";
     loadBookings();
   }
 
@@ -1060,6 +1099,12 @@
     const dateTag = showDate
       ? `<div class="card-date">📅 ${formatDateTH(b.date)}</div>` : "";
 
+    const auditParts = [];
+    if (b.addedBy)  auditParts.push(`เพิ่มโดย ${escHtml(b.addedBy)}${b.addedAt  ? " " + formatAuditTime(b.addedAt)  : ""}`);
+    if (b.editedBy) auditParts.push(`แก้ไขโดย ${escHtml(b.editedBy)}${b.editedAt ? " " + formatAuditTime(b.editedAt) : ""}`);
+    const auditLine = auditParts.length
+      ? `<div class="audit-info">${auditParts.map(p => `<span>${p}</span>`).join("")}</div>` : "";
+
     return `
       <div class="booking-card${cls}">
         <div class="time-col">
@@ -1072,9 +1117,18 @@
           <div class="guest-phone">${escHtml(b.phone)}</div>
           ${allergyTag}
           ${b.notes ? `<div class="notes-text">📝 ${escHtml(b.notes)}</div>` : ""}
+          ${auditLine}
         </div>
         ${editBtns}
       </div>`;
+  }
+
+  function formatAuditTime(dt) {
+    if (!dt) return "";
+    const parts = dt.split(" ");
+    if (parts.length < 2) return dt;
+    const [, m, d] = parts[0].split("-");
+    return `${parseInt(d)}/${parseInt(m)} ${parts[1]} น.`;
   }
 
   function renderMonthGroups(bookings) {
@@ -1181,8 +1235,11 @@
     btn.disabled = true;
     btn.textContent = "กำลังบันทึก...";
 
+    const nowBKK = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Bangkok" })
+                              .replace("T", " ").substring(0, 16);
+
     try {
-      const res = await apiPost({
+      const payload = {
         action:  editingRow ? "edit" : "add",
         _row:    editingRow,
         date,
@@ -1192,7 +1249,15 @@
         count:   document.getElementById("f-count").value,
         allergy: document.getElementById("f-allergy").value,
         notes:   document.getElementById("f-notes").value.trim(),
-      });
+      };
+      if (editingRow) {
+        payload.editedBy = currentUser;
+        payload.editedAt = nowBKK;
+      } else {
+        payload.addedBy = currentUser;
+        payload.addedAt = nowBKK;
+      }
+      const res = await apiPost(payload);
       if (res.ok) {
         closeBookingForm();
         loadBookings(true);
