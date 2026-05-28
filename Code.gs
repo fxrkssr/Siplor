@@ -50,9 +50,9 @@ function doGet(e) {
       hasAllergy: allergy !== "" && allergy !== "ไม่แพ้" && allergy !== "ไม่ได้แจ้ง",
       notes:      col.notes    >= 0 ? String(row[col.notes]   || "").trim() : "",
       addedBy:    col.addedBy  >= 0 ? String(row[col.addedBy]  || "").trim() : "",
-      addedAt:    col.addedAt  >= 0 ? String(row[col.addedAt]  || "").trim() : "",
+      addedAt:    col.addedAt  >= 0 ? formatDateTime(row[col.addedAt])  : "",
       editedBy:   col.editedBy >= 0 ? String(row[col.editedBy] || "").trim() : "",
-      editedAt:   col.editedAt >= 0 ? String(row[col.editedAt] || "").trim() : "",
+      editedAt:   col.editedAt >= 0 ? formatDateTime(row[col.editedAt]) : "",
     });
   }
 
@@ -113,6 +113,14 @@ function doPost(e) {
   } catch (err) {
     return jsonResponse({ error: err.message });
   }
+}
+
+function formatDateTime(val) {
+  if (!val) return "";
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, "Asia/Bangkok", "yyyy-MM-dd HH:mm");
+  }
+  return String(val).trim();
 }
 
 function formatPhone(val) {

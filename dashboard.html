@@ -1102,7 +1102,7 @@
     const auditParts = [];
     if (b.addedBy)  auditParts.push(`เพิ่มโดย ${escHtml(b.addedBy)}${b.addedAt  ? " " + formatAuditTime(b.addedAt)  : ""}`);
     if (b.editedBy) auditParts.push(`แก้ไขโดย ${escHtml(b.editedBy)}${b.editedAt ? " " + formatAuditTime(b.editedAt) : ""}`);
-    const auditLine = auditParts.length
+    const auditLine = (authed && auditParts.length)
       ? `<div class="audit-info">${auditParts.map(p => `<span>${p}</span>`).join("")}</div>` : "";
 
     return `
