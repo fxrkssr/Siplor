@@ -1125,10 +1125,16 @@
 
   function formatAuditTime(dt) {
     if (!dt) return "";
-    const parts = dt.split(" ");
-    if (parts.length < 2) return dt;
-    const [, m, d] = parts[0].split("-");
-    return `${parseInt(d)}/${parseInt(m)} ${parts[1]} น.`;
+    const m1 = dt.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})/);
+    if (m1) return `${parseInt(m1[3])}/${parseInt(m1[2])} ${m1[4]} น.`;
+    const d = new Date(dt);
+    if (!isNaN(d)) {
+      const iso = d.toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
+      const t   = d.toLocaleTimeString("sv-SE", { timeZone: "Asia/Bangkok" }).substring(0, 5);
+      const [, mm, dd] = iso.split("-");
+      return `${parseInt(dd)}/${parseInt(mm)} ${t} น.`;
+    }
+    return dt;
   }
 
   function renderMonthGroups(bookings) {
