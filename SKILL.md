@@ -85,11 +85,12 @@
 ## Dashboard (dashboard.html)
 
 ### Auth
-- รหัสผ่าน: `7777@` (เก็บใน `const PASSWORD` ใน JS)
-- กดปุ่ม 🔒 มุมขวาบน → ใส่รหัส → เข้า edit mode
+- 2 accounts เก็บใน `const USERS = { "7777@": "แอดมิน 1", "2608@": "แอดมิน 2" }`
+- กดปุ่ม 🔒 มุมขวาบน → ใส่รหัส → เข้า edit mode, แสดงชื่อ account เป็น badge สีทอง
 - Refresh หน้า = ต้องใส่รหัสใหม่ (ไม่มี persist)
-- `authed = true` → แสดงปุ่ม ✏️🗑️ บน card + ปุ่ม "+ เพิ่มการจอง"
+- `authed = true` → แสดงปุ่ม ✏️🗑️ บน card + ปุ่ม "+ เพิ่มการจอง" + audit info
 - ปุ่มแก้ไข/ลบ **ไม่แสดง** สำหรับ booking ที่ผ่านแล้ว (`isPast(b)`)
+- `currentUser` — ชื่อ account ที่ login อยู่ ใช้บันทึก audit
 
 ### Modes
 - **รายวัน (day)** — เลือกวันที่ด้วย Flatpickr, ปุ่ม ⊞ toggle compact 3-column
@@ -126,15 +127,30 @@ function isPast(b) {
 
 ---
 
-## Deploy Checklist
+## Deploy Checklist — บอก requirement ทุกครั้งที่แก้ไข
 
-เมื่อแก้ไข code ต้องทำตามลำดับ:
+> ⚠️ **Claude ต้องบอก requirement นี้ทุกครั้งหลังแก้ไข** — อย่าสรุปว่าเสร็จโดยไม่แจ้ง
 
-1. **Code.gs** → Apps Script → Deploy → Manage → New Version → Deploy
-2. **worker.js** → Cloudflare Workers → Edit → วาง code → Save & Deploy
-3. **dashboard.html** → push GitHub → Vercel deploy อัตโนมัติ
+| ไฟล์ที่แก้ | สิ่งที่ต้องทำ | อัตโนมัติ? |
+|---|---|---|
+| `Code.gs` | Apps Script → Deploy → Manage deployments → New version → Deploy | ❌ ต้องทำเอง |
+| `worker.js` | Cloudflare Workers → Edit code → วาง code ใหม่ → Save & Deploy | ❌ ต้องทำเอง |
+| `dashboard.html` | `git push` → Vercel deploy อัตโนมัติ | ✅ อัตโนมัติ |
+| `vercel.json` | `git push` → Vercel deploy อัตโนมัติ | ✅ อัตโนมัติ |
 
-> ⚠️ Apps Script และ Cloudflare Worker **ไม่ได้ deploy อัตโนมัติ** ต้องทำเองทุกครั้ง
+### วิธี deploy Apps Script (Code.gs)
+1. เปิด [script.google.com](https://script.google.com) → เลือกโปรเจกต์
+2. วาง code ใหม่ทับของเดิม
+3. Deploy → **Manage deployments** → ✏️ แก้ไข → **New version** → Deploy
+
+### วิธี deploy Cloudflare Worker (worker.js)
+1. เปิด [dash.cloudflare.com](https://dash.cloudflare.com) → Workers & Pages → siplor
+2. Edit code → วาง code ใหม่ทับของเดิม
+3. **Save & Deploy**
+
+### ผลถ้าไม่ deploy
+- ไม่ deploy **Code.gs** → API ยังรันโค้ดเก่า (เช่น ฟิลด์ใหม่จะหายไป / format ผิด)
+- ไม่ deploy **worker.js** → parameter ใหม่ที่เพิ่มจะไม่ถูกส่งผ่าน (เช่น `?all=1` → search ไม่ทำงาน)
 
 ---
 
@@ -160,6 +176,20 @@ const upstream = all
   : `${APPS_SCRIPT_URL}?date=${date || todayBKK()}`;
 ```
 > ⚠️ ถ้าไม่อัปเดต Worker จะ default เป็น `?date=วันนี้` ทำให้ search คืนข้อมูลแค่วันนี้
+
+---
+
+## Audit Trail (เพิ่มโดย / แก้ไขโดย)
+
+- แสดงเฉพาะตอน `authed = true` (login แล้ว)
+- ข้อมูลเก่าที่มีก่อน feature นี้จะไม่มี audit — แสดงเฉพาะที่เพิ่ม/แก้หลังจาก deploy
+- **Google Sheet** ต้องมี 4 column header: `เพิ่มโดย`, `เพิ่มเมื่อ`, `แก้ไขโดย`, `แก้ไขเมื่อ`
+- `addedBy` / `addedAt` — บันทึกตอน action `"add"` เท่านั้น
+- `editedBy` / `editedAt` — บันทึกตอน action `"edit"` เท่านั้น (ไม่ทับ addedBy)
+- `formatDateTime(val)` ใน Code.gs — handle กรณี Sheets แปลง string เป็น Date object → ใช้ `Utilities.formatDate`
+- `formatAuditTime(dt)` ใน dashboard.html — parse "YYYY-MM-DD HH:MM" หรือ JS Date string (fallback กรณียังไม่ redeploy Apps Script)
+
+> ⚠️ ถ้าแก้ Code.gs แล้วไม่ redeploy → Apps Script ส่งค่า Date object กลับมาเป็น string รูปแบบ "Thu May 28..." ทำให้ format วันที่ผิด
 
 ---
 
