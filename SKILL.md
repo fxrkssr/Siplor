@@ -4,6 +4,12 @@
 
 ---
 
+## Claude Behavior Rules
+
+> ⚠️ **ทุกครั้งที่แก้ไขเสร็จ ให้ถามว่า "จะให้ push ไหม?" เสมอ — ก่อนจบการสนทนา**
+
+---
+
 ## Tech Stack
 
 | ชั้น | เครื่องมือ | หน้าที่ |
@@ -25,6 +31,10 @@
 | `worker.js` | Cloudflare Worker | Proxy + CORS |
 | `dashboard.html` | GitHub → Vercel | หน้าเว็บพนักงาน |
 | `vercel.json` | GitHub | route / → dashboard.html |
+| `SKILL.md` | GitHub | dev notes นี้ |
+
+> Local backup: `C:\Users\KssR\Documents\Siplor\`
+> Remote: `https://github.com/fxrkssr/Siplor`
 
 ---
 
@@ -43,21 +53,46 @@
   → Google Sheets (เขียนข้อมูล)
 ```
 
+**ทำไมต้องมี Cloudflare Worker?**
+Browser ไม่สามารถเรียก Apps Script URL ตรงๆ ได้เพราะ CORS — Worker เป็น middle layer ที่ inject header `Access-Control-Allow-Origin: *`
+
+---
+
+## Google Sheets — โครงสร้าง Column
+
+Column header ที่ต้องมีใน Sheet (ชื่อตรงนี้ใช้ map ใน `getColMap()`):
+
+| Header | หน้าที่ |
+|---|---|
+| `วันที่` | วันที่จอง (YYYY-MM-DD) |
+| `เวลา` | เวลาจอง (HH:mm) |
+| `ชื่อ` | ชื่อลูกค้า |
+| `เบอร์โทร` | เบอร์ (อาจเป็น number → Apps Script จัดการ) |
+| `จำนวน` | จำนวนลูกค้า |
+| `แพ้อาหาร` | ข้อมูลแพ้อาหาร |
+| `หมายเหตุ` | หมายเหตุเพิ่มเติม |
+| `เพิ่มโดย` | audit: ชื่อ account ที่เพิ่ม |
+| `เพิ่มเมื่อ` | audit: เวลาที่เพิ่ม |
+| `แก้ไขโดย` | audit: ชื่อ account ที่แก้ล่าสุด |
+| `แก้ไขเมื่อ` | audit: เวลาที่แก้ล่าสุด |
+
+> Apps Script ใช้ `getColMap()` หา index จากชื่อ header — **ไม่ hardcode index** ดังนั้นเพิ่ม column ไหนก็ได้โดยไม่พัง
+
 ---
 
 ## Apps Script (Code.gs)
 
 ### doGet
-- รับ parameter `?date=YYYY-MM-DD` หรือ `?month=YYYY-MM`
-- หา column จาก header name (ไม่ใช้ index ตายตัว) ผ่าน `getColMap()`
+- รับ parameter `?date=YYYY-MM-DD` หรือ `?month=YYYY-MM` หรือ `?all=1`
+- หา column จาก header name ผ่าน `getColMap()`
 - Return JSON array ของ bookings
-- แต่ละ booking มี field: `_row`, `date`, `time`, `name`, `phone`, `count`, `allergy`, `hasAllergy`, `notes`
-- `_row` = row index ใน Sheets (1-based) สำหรับ edit/delete
+- แต่ละ booking มี field: `_row`, `date`, `time`, `name`, `phone`, `count`, `allergy`, `hasAllergy`, `notes`, `addedBy`, `addedAt`, `editedBy`, `editedAt`
+- `_row` = row index ใน Sheets (1-based) — ใช้สำหรับ edit/delete
 - `formatTime()` — handle กรณี time column เป็น Date object (หลัง edit) → format เป็น `HH:mm`
 - `formatPhone()` — handle กรณี phone เป็น number → เติม `"0"` นำหน้า
 
 ### doPost
-- รับ JSON body: `{ action, _row, date, time, name, phone, count, allergy, notes }`
+- รับ JSON body: `{ action, _row, date, time, name, phone, count, allergy, notes, ... }`
 - `action: "add"` → `sheet.appendRow()`
 - `action: "edit"` → `sheet.getRange(rowIdx).setValues()`
 - `action: "delete"` → `sheet.deleteRow(rowIdx)`
@@ -70,15 +105,18 @@
 - `getColMap(headers)` — map ชื่อ header → index column
 - `formatTime(val)` — Date object หรือ string → `"HH:mm"`
 - `formatPhone(val)` — number → prepend `"0"`, string → ใช้ตรงๆ
+- `formatDateTime(val)` — Sheets Date object → `"YYYY-MM-DD HH:MM"` (ใช้กับ audit fields)
 
 ---
 
 ## Cloudflare Worker (worker.js)
 
-- GET → forward `?date=` หรือ `?month=` ไปยัง Apps Script URL
-- POST → forward body JSON ไปยัง Apps Script URL
+- GET `?date=` → forward ไปยัง Apps Script
+- GET `?month=` → forward ไปยัง Apps Script
+- GET `?all=1` → forward `?all=1` ไปยัง Apps Script (สำหรับ search)
+- POST → forward body JSON ไปยัง Apps Script
 - CORS headers: `Access-Control-Allow-Origin: *`, Methods: `GET, POST, OPTIONS`
-- **ต้อง Save & Deploy ทุกครั้งที่แก้ Apps Script URL**
+- **ต้อง Save & Deploy ทุกครั้งที่แก้ Apps Script URL หรือเพิ่ม parameter ใหม่**
 
 ---
 
@@ -98,6 +136,20 @@
   - 📌 ยังไม่ได้มา — `!isPast(b)`
   - ✅ ใช้บริการแล้ว — `isPast(b)`
   - 📋 ทั้งหมด — ทุก booking
+
+### State Variables (สำคัญมาก)
+
+| Variable | หน้าที่ | ถูก reset โดย |
+|---|---|---|
+| `_allBookings` | bookings ของวัน/เดือนที่เลือกอยู่ | `loadBookings()` |
+| `_allSearchBookings` | bookings ทุกวัน สำหรับ search | `toggleSearch()` (ตอนปิด) |
+| `_bookingsByRow` | map `_row → booking object` สำหรับ lookup ตอน edit/delete | `loadBookings()` (reset เป็น `{}`) |
+| `searchQuery` | คำค้นหาปัจจุบัน | `onSearch("")` ตอนปิด search |
+| `mode` | `"day"` หรือ `"month"` | `setMode()` |
+| `authed` | login state | logout |
+| `editingRow` | `_row` ของ booking ที่กำลัง edit (null = add ใหม่) | `closeBookingForm()` |
+
+> ⚠️ **`_bookingsByRow` reset ทุกครั้งที่ `loadBookings()` รัน** — ถ้าเพิ่ม logic ที่ต้อง lookup booking จาก `_row` ให้ fallback ไปหาใน `_allSearchBookings` ด้วยเสมอ (ดู `openBookingForm`)
 
 ### isPast(b)
 ```js
@@ -127,49 +179,13 @@ function isPast(b) {
 
 ---
 
-## Deploy Checklist — บอก requirement ทุกครั้งที่แก้ไข
-
-> ⚠️ **Claude ต้องบอก requirement นี้ทุกครั้งหลังแก้ไข** — อย่าสรุปว่าเสร็จโดยไม่แจ้ง
-
-| ไฟล์ที่แก้ | สิ่งที่ต้องทำ | อัตโนมัติ? |
-|---|---|---|
-| `Code.gs` | Apps Script → Deploy → Manage deployments → New version → Deploy | ❌ ต้องทำเอง |
-| `worker.js` | Cloudflare Workers → Edit code → วาง code ใหม่ → Save & Deploy | ❌ ต้องทำเอง |
-| `dashboard.html` | `git push` → Vercel deploy อัตโนมัติ | ✅ อัตโนมัติ |
-| `vercel.json` | `git push` → Vercel deploy อัตโนมัติ | ✅ อัตโนมัติ |
-
-### วิธี deploy Apps Script (Code.gs)
-1. เปิด [script.google.com](https://script.google.com) → เลือกโปรเจกต์
-2. วาง code ใหม่ทับของเดิม
-3. Deploy → **Manage deployments** → ✏️ แก้ไข → **New version** → Deploy
-
-### วิธี deploy Cloudflare Worker (worker.js)
-1. เปิด [dash.cloudflare.com](https://dash.cloudflare.com) → Workers & Pages → siplor
-2. Edit code → วาง code ใหม่ทับของเดิม
-3. **Save & Deploy**
-
-### ผลถ้าไม่ deploy
-- ไม่ deploy **Code.gs** → API ยังรันโค้ดเก่า (เช่น ฟิลด์ใหม่จะหายไป / format ผิด)
-- ไม่ deploy **worker.js** → parameter ใหม่ที่เพิ่มจะไม่ถูกส่งผ่าน (เช่น `?all=1` → search ไม่ทำงาน)
-
----
-
 ## Search (🔍)
 
 - กดปุ่ม 🔍 มุมขวาบน → ช่องค้นหาปรากฏ + โหลด data ทุกวัน (`?all=1`) อัตโนมัติ
 - พิมพ์ทันที → ผลลัพธ์ขึ้น real-time ไม่ต้องกดปุ่ม
 - ค้นหาได้จาก: ชื่อ, เบอร์โทร (ตัดขีดออก), หมายเหตุ
 - ผลลัพธ์แสดงเป็น flat list — แต่ละ card มีป้าย 📅 วันที่ชัดเจน
-- **ไม่ถูก filter วัน/เดือน** — แสดงทุก booking ที่ match ไม่ว่าจะเลือกวันไหนอยู่
-
-### Variables ที่เกี่ยวกับ Search
-| Variable | หน้าที่ |
-|---|---|
-| `_allBookings` | ข้อมูล day/month view (โหลดจาก `?date=` หรือ `?month=`) |
-| `_allSearchBookings` | ข้อมูลทุก booking สำหรับ search โดยเฉพาะ (โหลดจาก `?all=1`) |
-| `searchQuery` | string ที่ผู้ใช้พิมพ์ (lowercase, trimmed) |
-
-> ⚠️ **สำคัญ**: `_allBookings` และ `_allSearchBookings` ต้องแยกกัน — ถ้าใช้ตัวเดียวกัน จะเกิด bug ที่ `loadBookings()` ทับข้อมูล all-bookings ด้วยข้อมูลรายวัน ทำให้ search filter ติดวัน/เดือนที่เลือกอยู่
+- **ไม่ถูก filter วัน/เดือน** — แสดงทุก booking ที่ match
 
 ### Logic ใน renderFromCache()
 ```js
@@ -212,13 +228,41 @@ const upstream = all
 
 ---
 
+## Deploy Checklist
+
+> ⚠️ **Claude ต้องถามให้ push ทุกครั้งหลังแก้ไขเสร็จ**
+
+| ไฟล์ที่แก้ | สิ่งที่ต้องทำ | อัตโนมัติ? |
+|---|---|---|
+| `Code.gs` | Apps Script → Deploy → Manage deployments → New version → Deploy | ❌ ต้องทำเอง |
+| `worker.js` | Cloudflare Workers → Edit code → วาง code ใหม่ → Save & Deploy | ❌ ต้องทำเอง |
+| `dashboard.html` | `git push` → Vercel deploy อัตโนมัติ | ✅ อัตโนมัติ |
+| `vercel.json` | `git push` → Vercel deploy อัตโนมัติ | ✅ อัตโนมัติ |
+| `SKILL.md` | `git push` | ✅ อัตโนมัติ |
+
+### วิธี deploy Apps Script (Code.gs)
+1. เปิด [script.google.com](https://script.google.com) → เลือกโปรเจกต์
+2. วาง code ใหม่ทับของเดิม
+3. Deploy → **Manage deployments** → ✏️ แก้ไข → **New version** → Deploy
+
+### วิธี deploy Cloudflare Worker (worker.js)
+1. เปิด [dash.cloudflare.com](https://dash.cloudflare.com) → Workers & Pages → siplor
+2. Edit code → วาง code ใหม่ทับของเดิม
+3. **Save & Deploy**
+
+### ผลถ้าไม่ deploy
+- ไม่ deploy **Code.gs** → API ยังรันโค้ดเก่า (เช่น ฟิลด์ใหม่จะหายไป / format ผิด)
+- ไม่ deploy **worker.js** → parameter ใหม่ที่เพิ่มจะไม่ถูกส่งผ่าน (เช่น `?all=1` → search ไม่ทำงาน)
+
+---
+
 ## Known Issues / Notes
 
 - `_row` index ใช้ตอน load หน้า ถ้ามีคนลบ row พร้อมกัน อาจ edit ผิด row (edge case, low risk)
 - ไม่มี auth ที่ API level — ใครรู้ Cloudflare Worker URL ก็ POST ได้ (acceptable สำหรับ internal tool)
 - วันอังคารถูกบล็อก 2 ชั้น: trigger ใน Apps Script (form) + validation ใน dashboard (web form)
 
-### _bookingsByRow reset bug (fixed)
+### _bookingsByRow reset bug (fixed 2026-05-29)
 - **Bug:** กด แก้ไข จากหน้า search แล้ว form เปิดว่าง ต้องกรอกใหม่หมด
 - **สาเหตุ:** `loadBookings()` reset `_bookingsByRow = {}` ทุกครั้งที่รัน (เช่น เปลี่ยนวัน, กดวันนี้, เปลี่ยน mode) ทำให้ `_row` ของ booking ที่ไม่อยู่ใน view ปัจจุบันหายออกจาก map
 - **Fix:** `openBookingForm` และ `openDeleteConfirm` fallback ไปหาใน `_allSearchBookings` ถ้าหาใน `_bookingsByRow` ไม่เจอ
@@ -226,10 +270,3 @@ const upstream = all
   const b = _bookingsByRow[row] ?? _allSearchBookings.find(x => x._row === row) ?? null;
   ```
 - **หลักการ:** `_allSearchBookings` ไม่ถูกแตะโดย `loadBookings()` จึงเป็น fallback ที่ปลอดภัยเสมอเมื่ออยู่ใน search mode
-
----
-
-## Backup
-
-Local backup: `C:\Users\KssR\Documents\Siplor\`
-Remote: `https://github.com/fxrkssr/Siplor`
