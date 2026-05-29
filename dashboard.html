@@ -761,18 +761,19 @@
     "20:00","20:30","21:00","21:30","22:00"
   ];
 
-  let mode           = "day";
-  let currentMonth   = "";
-  let monthTab       = "upcoming";
-  let compact        = false;
-  let searchQuery    = "";
-  let _allBookings   = [];
-  let fp             = null;
-  let authed         = false;
-  let currentUser    = "";
-  let editingRow     = null;
-  let deleteTarget   = null;
-  let _bookingsByRow = {};
+  let mode               = "day";
+  let currentMonth       = "";
+  let monthTab           = "upcoming";
+  let compact            = false;
+  let searchQuery        = "";
+  let _allBookings       = [];
+  let _allSearchBookings = [];
+  let fp                 = null;
+  let authed             = false;
+  let currentUser        = "";
+  let editingRow         = null;
+  let deleteTarget       = null;
+  let _bookingsByRow     = {};
 
   // ===== INIT =====
   function initDashboard() {
@@ -920,6 +921,7 @@
       document.getElementById("search-input").focus();
     } else {
       onSearch("");
+      _allSearchBookings = [];
       document.getElementById("search-input").value = "";
       loadBookings();
     }
@@ -933,7 +935,7 @@
       if (!res.ok) return;
       const bookings = await res.json();
       bookings.forEach(b => _bookingsByRow[b._row] = b);
-      _allBookings = bookings;
+      _allSearchBookings = bookings;
       renderFromCache();
     } catch(e) {}
   }
@@ -958,7 +960,8 @@
     const list  = document.getElementById("booking-list");
     const label = document.getElementById("section-label");
 
-    let filtered = filterBookings(_allBookings);
+    const sourceData = searchQuery ? _allSearchBookings : _allBookings;
+    let filtered = filterBookings(sourceData);
 
     if (!searchQuery && mode === "month") {
       filtered = monthTab === "upcoming" ? filtered.filter(b => !isPast(b))
