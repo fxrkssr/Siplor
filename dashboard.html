@@ -1207,7 +1207,7 @@
 
   // ===== BOOKING FORM =====
   function openBookingForm(row) {
-    const b = row !== null ? _bookingsByRow[row] : null;
+    const b = row !== null ? (_bookingsByRow[row] ?? _allSearchBookings.find(x => x._row === row) ?? null) : null;
     editingRow = b ? b._row : null;
     document.getElementById("form-title").textContent = b ? "แก้ไขการจอง" : "เพิ่มการจอง";
     document.getElementById("f-date").value  = b ? b.date  : todayISO();
@@ -1283,7 +1283,7 @@
 
   // ===== DELETE =====
   function openDeleteConfirm(row) {
-    const b = _bookingsByRow[row];
+    const b = _bookingsByRow[row] ?? _allSearchBookings.find(x => x._row === row) ?? null;
     deleteTarget = row;
     document.getElementById("del-desc").textContent =
       `ลบการจองของ "${b ? b.name : ""}" ออกจากระบบ?`;

@@ -218,6 +218,15 @@ const upstream = all
 - ไม่มี auth ที่ API level — ใครรู้ Cloudflare Worker URL ก็ POST ได้ (acceptable สำหรับ internal tool)
 - วันอังคารถูกบล็อก 2 ชั้น: trigger ใน Apps Script (form) + validation ใน dashboard (web form)
 
+### _bookingsByRow reset bug (fixed)
+- **Bug:** กด แก้ไข จากหน้า search แล้ว form เปิดว่าง ต้องกรอกใหม่หมด
+- **สาเหตุ:** `loadBookings()` reset `_bookingsByRow = {}` ทุกครั้งที่รัน (เช่น เปลี่ยนวัน, กดวันนี้, เปลี่ยน mode) ทำให้ `_row` ของ booking ที่ไม่อยู่ใน view ปัจจุบันหายออกจาก map
+- **Fix:** `openBookingForm` และ `openDeleteConfirm` fallback ไปหาใน `_allSearchBookings` ถ้าหาใน `_bookingsByRow` ไม่เจอ
+  ```js
+  const b = _bookingsByRow[row] ?? _allSearchBookings.find(x => x._row === row) ?? null;
+  ```
+- **หลักการ:** `_allSearchBookings` ไม่ถูกแตะโดย `loadBookings()` จึงเป็น fallback ที่ปลอดภัยเสมอเมื่ออยู่ใน search mode
+
 ---
 
 ## Backup
