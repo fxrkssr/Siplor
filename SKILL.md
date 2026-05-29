@@ -160,11 +160,30 @@ function isPast(b) {
 - พิมพ์ทันที → ผลลัพธ์ขึ้น real-time ไม่ต้องกดปุ่ม
 - ค้นหาได้จาก: ชื่อ, เบอร์โทร (ตัดขีดออก), หมายเหตุ
 - ผลลัพธ์แสดงเป็น flat list — แต่ละ card มีป้าย 📅 วันที่ชัดเจน
-- ไม่ต้องรู้ล่วงหน้าว่าลูกค้ามาวันไหน เดือนไหน
-- `_allBookings` — cache ที่ใช้ตอน search (โหลดจาก `?all=1`)
-- `loadMonthForSearch()` — fetch `?all=1`, เก็บใน `_allBookings`, render loading ระหว่างรอ
+- **ไม่ถูก filter วัน/เดือน** — แสดงทุก booking ที่ match ไม่ว่าจะเลือกวันไหนอยู่
+
+### Variables ที่เกี่ยวกับ Search
+| Variable | หน้าที่ |
+|---|---|
+| `_allBookings` | ข้อมูล day/month view (โหลดจาก `?date=` หรือ `?month=`) |
+| `_allSearchBookings` | ข้อมูลทุก booking สำหรับ search โดยเฉพาะ (โหลดจาก `?all=1`) |
+| `searchQuery` | string ที่ผู้ใช้พิมพ์ (lowercase, trimmed) |
+
+> ⚠️ **สำคัญ**: `_allBookings` และ `_allSearchBookings` ต้องแยกกัน — ถ้าใช้ตัวเดียวกัน จะเกิด bug ที่ `loadBookings()` ทับข้อมูล all-bookings ด้วยข้อมูลรายวัน ทำให้ search filter ติดวัน/เดือนที่เลือกอยู่
+
+### Logic ใน renderFromCache()
+```js
+const sourceData = searchQuery ? _allSearchBookings : _allBookings;
+let filtered = filterBookings(sourceData);
+```
+- มี `searchQuery` → ใช้ `_allSearchBookings` (ข้อมูลทั้งหมด)
+- ไม่มี `searchQuery` → ใช้ `_allBookings` (รายวัน/เดือนตามปกติ)
+
+### Functions
+- `loadMonthForSearch()` — fetch `?all=1`, เก็บใน `_allSearchBookings` (ไม่แตะ `_allBookings`), render loading ระหว่างรอ
 - `filterBookings(bookings)` — filter จาก `searchQuery`, normalize phone (ตัด `-` ออก)
 - `renderCard(b, showDate)` — `showDate=true` จะแสดง `.card-date` badge บน card
+- เมื่อปิด search → `_allSearchBookings = []` และ เรียก `loadBookings()` คืนสภาพปกติ
 
 ### worker.js — ต้องส่ง `?all=1` ผ่านด้วย
 ```js
