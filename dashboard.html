@@ -403,8 +403,18 @@
       justify-content: center;
     }
 
-    .btn-edit   { background: #dbeafe; color: #1d4ed8; }
-    .btn-delete { background: #fee2e2; color: #b91c1c; }
+    .btn-edit            { background: #dbeafe; color: #1d4ed8; }
+    .btn-cancel-booking  { background: #fee2e2; color: #b91c1c; }
+
+    .cancelled-tag {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: #fee2e2;
+      color: #b91c1c;
+      margin-top: 4px;
+    }
 
     /* ===== FABs ===== */
     .add-fab {
@@ -646,9 +656,10 @@
     </div>
 
     <div class="month-subtabs" id="month-subtabs" style="display:none">
-      <div class="month-subtab active" id="subtab-upcoming" onclick="setMonthTab('upcoming')">📌 ยังไม่ได้มา</div>
-      <div class="month-subtab"        id="subtab-visited"  onclick="setMonthTab('visited')">✅ ใช้บริการแล้ว</div>
-      <div class="month-subtab"        id="subtab-all"      onclick="setMonthTab('all')">📋 ทั้งหมด</div>
+      <div class="month-subtab active" id="subtab-upcoming"  onclick="setMonthTab('upcoming')">📌 ยังไม่ได้มา</div>
+      <div class="month-subtab"        id="subtab-visited"   onclick="setMonthTab('visited')">✅ ใช้บริการแล้ว</div>
+      <div class="month-subtab"        id="subtab-all"       onclick="setMonthTab('all')">📋 ทั้งหมด</div>
+      <div class="month-subtab"        id="subtab-cancelled" onclick="setMonthTab('cancelled')">❌ ยกเลิก</div>
     </div>
   </div>
 
@@ -736,14 +747,14 @@
   </div>
 </div>
 
-<!-- DELETE CONFIRM MODAL -->
-<div id="del-overlay" class="overlay" style="display:none" onclick="if(event.target===this)closeDeleteConfirm()">
+<!-- CANCEL CONFIRM MODAL -->
+<div id="cancel-overlay" class="overlay" style="display:none" onclick="if(event.target===this)closeCancelConfirm()">
   <div class="modal">
-    <div class="modal-title">ลบการจอง</div>
-    <p id="del-desc" style="font-size:15px;color:var(--muted);margin-bottom:8px;"></p>
+    <div class="modal-title">ยกเลิกการจอง</div>
+    <p id="cancel-desc" style="font-size:15px;color:var(--muted);margin-bottom:8px;"></p>
     <div class="modal-actions">
-      <button onclick="closeDeleteConfirm()" class="btn-cancel">ยกเลิก</button>
-      <button onclick="confirmDelete()" class="btn-danger" id="del-btn">ลบ</button>
+      <button onclick="closeCancelConfirm()" class="btn-cancel">ปิด</button>
+      <button onclick="confirmCancel()" class="btn-danger" id="cancel-btn">ยืนยันยกเลิก</button>
     </div>
   </div>
 </div>
@@ -771,8 +782,9 @@
   let fp                 = null;
   let authed             = false;
   let currentUser        = "";
-  let editingRow         = null;
-  let deleteTarget       = null;
+  let editingRow             = null;
+  let cancelTarget           = null;
+  let _allCancelledBookings  = [];
   let _bookingsByRow     = {};
 
   // ===== INIT =====
@@ -894,8 +906,9 @@
       updateMonthNav();
       monthTab = "upcoming";
       document.getElementById("month-subtabs").style.display = "flex";
-      document.getElementById("subtab-upcoming").classList.add("active");
-      document.getElementById("subtab-all").classList.remove("active");
+      ["upcoming","visited","all","cancelled"].forEach(t =>
+        document.getElementById(`subtab-${t}`).classList.toggle("active", t === "upcoming")
+      );
     } else {
       document.getElementById("month-subtabs").style.display = "none";
     }
@@ -904,10 +917,14 @@
 
   function setMonthTab(tab) {
     monthTab = tab;
-    document.getElementById("subtab-upcoming").classList.toggle("active", tab === "upcoming");
-    document.getElementById("subtab-visited").classList.toggle("active",  tab === "visited");
-    document.getElementById("subtab-all").classList.toggle("active",      tab === "all");
-    renderFromCache();
+    ["upcoming","visited","all","cancelled"].forEach(t =>
+      document.getElementById(`subtab-${t}`).classList.toggle("active", t === tab)
+    );
+    if (tab === "cancelled") {
+      loadCancelledBookings();
+    } else {
+      renderFromCache();
+    }
   }
 
   async function toggleSearch() {
@@ -959,6 +976,17 @@
   function renderFromCache() {
     const list  = document.getElementById("booking-list");
     const label = document.getElementById("section-label");
+
+    // Cancelled tab — data มาจาก _allCancelledBookings แยก
+    if (!searchQuery && mode === "month" && monthTab === "cancelled") {
+      const total = _allCancelledBookings.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
+      document.getElementById("total-count").textContent = total;
+      label.textContent = formatMonthTH(currentMonth);
+      list.innerHTML = _allCancelledBookings.length === 0
+        ? renderEmptyCancelled()
+        : renderMonthGroups(_allCancelledBookings);
+      return;
+    }
 
     const sourceData = searchQuery ? _allSearchBookings : _allBookings;
     let filtered = filterBookings(sourceData);
@@ -1024,7 +1052,31 @@
   }
 
   // ===== LOAD =====
+  async function loadCancelledBookings(showSpin = false) {
+    const list       = document.getElementById("booking-list");
+    const label      = document.getElementById("section-label");
+    const refreshBtn = document.getElementById("refresh-btn");
+    if (showSpin) refreshBtn.classList.add("spinning");
+    else list.innerHTML = renderLoading();
+    label.textContent = formatMonthTH(currentMonth);
+    try {
+      const res = await fetch(`${API_URL}?cancelled=1&month=${currentMonth}&_=${Date.now()}`);
+      if (!res.ok) throw new Error();
+      _allCancelledBookings = await res.json();
+      renderFromCache();
+    } catch (e) {
+      list.innerHTML = renderError();
+    } finally {
+      refreshBtn.classList.remove("spinning");
+    }
+  }
+
   async function loadBookings(showSpin = false) {
+    if (mode === "month" && monthTab === "cancelled") {
+      await loadCancelledBookings(showSpin);
+      return;
+    }
+
     const list       = document.getElementById("booking-list");
     const label      = document.getElementById("section-label");
     const refreshBtn = document.getElementById("refresh-btn");
@@ -1093,10 +1145,10 @@
           ? `<span class="allergy-tag not-informed">&#8212; ไม่ได้แจ้ง</span>`
           : `<span class="allergy-tag no-allergy">&#10003; ไม่แพ้อาหาร</span>`);
 
-    const editBtns = (authed && !isPast(b)) ? `
+    const editBtns = (authed && !isPast(b) && !b.cancelled) ? `
       <div class="card-actions">
-        <button class="btn-icon btn-edit"   onclick="openBookingForm(${b._row})" title="แก้ไข">✏️</button>
-        <button class="btn-icon btn-delete" onclick="openDeleteConfirm(${b._row})" title="ลบ">🗑️</button>
+        <button class="btn-icon btn-edit"           onclick="openBookingForm(${b._row})" title="แก้ไข">✏️</button>
+        <button class="btn-icon btn-cancel-booking" onclick="openCancelConfirm(${b._row})" title="ยกเลิก">❌</button>
       </div>` : "";
 
     const dateTag = showDate
@@ -1107,6 +1159,9 @@
     if (b.editedBy) auditParts.push(`แก้ไขโดย ${escHtml(b.editedBy)}${b.editedAt ? " " + formatAuditTime(b.editedAt) : ""}`);
     const auditLine = (authed && auditParts.length)
       ? `<div class="audit-info">${auditParts.map(p => `<span>${p}</span>`).join("")}</div>` : "";
+
+    const cancelledTag = b.cancelled
+      ? `<span class="cancelled-tag">❌ ยกเลิกแล้ว</span>` : "";
 
     return `
       <div class="booking-card${cls}">
@@ -1119,6 +1174,7 @@
           <div class="guest-name">${escHtml(b.name)}</div>
           <div class="guest-phone">${escHtml(b.phone)}</div>
           ${allergyTag}
+          ${cancelledTag}
           ${b.notes ? `<div class="notes-text">📝 ${escHtml(b.notes)}</div>` : ""}
           ${auditLine}
         </div>
@@ -1178,6 +1234,14 @@
       <div class="icon">📆</div>
       <h3>ไม่มีการจองในเดือนนี้</h3>
       <p>ยังไม่มีลูกค้าจองในเดือนที่เลือก</p>
+    </div>`;
+  }
+
+  function renderEmptyCancelled() {
+    return `<div class="state-box">
+      <div class="icon">✅</div>
+      <h3>ไม่มีรายการที่ยกเลิก</h3>
+      <p>ไม่มีการจองที่ถูกยกเลิกในเดือนนี้</p>
     </div>`;
   }
 
@@ -1281,29 +1345,29 @@
     }
   }
 
-  // ===== DELETE =====
-  function openDeleteConfirm(row) {
+  // ===== CANCEL =====
+  function openCancelConfirm(row) {
     const b = _bookingsByRow[row] ?? _allSearchBookings.find(x => x._row === row) ?? null;
-    deleteTarget = row;
-    document.getElementById("del-desc").textContent =
-      `ลบการจองของ "${b ? b.name : ""}" ออกจากระบบ?`;
-    document.getElementById("del-overlay").style.display = "flex";
+    cancelTarget = row;
+    document.getElementById("cancel-desc").textContent =
+      `ยืนยันยกเลิกการจองของ "${b ? b.name : ""}"?`;
+    document.getElementById("cancel-overlay").style.display = "flex";
   }
 
-  function closeDeleteConfirm() {
-    document.getElementById("del-overlay").style.display = "none";
-    deleteTarget = null;
+  function closeCancelConfirm() {
+    document.getElementById("cancel-overlay").style.display = "none";
+    cancelTarget = null;
   }
 
-  async function confirmDelete() {
-    if (deleteTarget === null) return;
-    const btn = document.getElementById("del-btn");
+  async function confirmCancel() {
+    if (cancelTarget === null) return;
+    const btn = document.getElementById("cancel-btn");
     btn.disabled = true;
-    btn.textContent = "กำลังลบ...";
+    btn.textContent = "กำลังบันทึก...";
     try {
-      const res = await apiPost({ action: "delete", _row: deleteTarget });
+      const res = await apiPost({ action: "cancel", _row: cancelTarget });
       if (res.ok) {
-        closeDeleteConfirm();
+        closeCancelConfirm();
         loadBookings(true);
       } else {
         alert("เกิดข้อผิดพลาด: " + (res.error || "ไม่ทราบสาเหตุ"));
@@ -1312,7 +1376,7 @@
       alert("ไม่สามารถเชื่อมต่อได้");
     } finally {
       btn.disabled = false;
-      btn.textContent = "ลบ";
+      btn.textContent = "ยืนยันยกเลิก";
     }
   }
 

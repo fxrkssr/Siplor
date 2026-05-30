@@ -11,11 +11,12 @@ function doGet(e) {
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return jsonResponse([]);
 
-  const dateParam  = (e.parameter && e.parameter.date)  ? e.parameter.date  : null;
-  const monthParam = (e.parameter && e.parameter.month) ? e.parameter.month : null;
-  const allParam   = (e.parameter && e.parameter.all)   ? true              : false;
+  const dateParam      = (e.parameter && e.parameter.date)      ? e.parameter.date  : null;
+  const monthParam     = (e.parameter && e.parameter.month)     ? e.parameter.month : null;
+  const allParam       = (e.parameter && e.parameter.all)       ? true              : false;
+  const cancelledParam = (e.parameter && e.parameter.cancelled) ? true              : false;
 
-  if (!dateParam && !monthParam && !allParam) return jsonResponse([]);
+  if (!dateParam && !monthParam && !allParam && !cancelledParam) return jsonResponse([]);
 
   const headers = data[0].map(h => String(h).trim());
   const col     = getColMap(headers);
@@ -35,7 +36,13 @@ function doGet(e) {
 
     if (dateParam  && dateStr !== dateParam)           continue;
     if (monthParam && !dateStr.startsWith(monthParam)) continue;
-    // allParam = true → no filter, return everything
+    // allParam / cancelledParam → no date filter
+
+    const status      = col.status >= 0 ? String(row[col.status] || "").trim() : "";
+    const isCancelled = status === "ยกเลิก";
+
+    if (cancelledParam && !isCancelled) continue;  // cancelled mode: ส่งเฉพาะที่ยกเลิก
+    if (!cancelledParam && isCancelled) continue;  // normal mode: ซ่อนที่ยกเลิก
 
     const allergy = col.allergy >= 0 ? String(row[col.allergy] || "").trim() : "";
 
@@ -53,6 +60,7 @@ function doGet(e) {
       addedAt:    col.addedAt  >= 0 ? formatDateTime(row[col.addedAt])  : "",
       editedBy:   col.editedBy >= 0 ? String(row[col.editedBy] || "").trim() : "",
       editedAt:   col.editedAt >= 0 ? formatDateTime(row[col.editedAt]) : "",
+      cancelled:  isCancelled,
     });
   }
 
@@ -90,6 +98,14 @@ function doPost(e) {
 
     if (body.action === "delete") {
       sheet.deleteRow(rowIdx);
+      return jsonResponse({ ok: true });
+    }
+
+    if (body.action === "cancel") {
+      const r    = sheet.getRange(rowIdx, 1, 1, nCols);
+      const vals = r.getValues()[0];
+      if (col.status >= 0) vals[col.status] = "ยกเลิก";
+      r.setValues([vals]);
       return jsonResponse({ ok: true });
     }
 
@@ -150,6 +166,7 @@ function getColMap(headers) {
     addedAt:  headers.findIndex(h => h === "เพิ่มเมื่อ"),
     editedBy: headers.findIndex(h => h === "แก้ไขโดย"),
     editedAt: headers.findIndex(h => h === "แก้ไขเมื่อ"),
+    status:   headers.findIndex(h => h === "สถานะ"),
   };
 }
 
