@@ -747,6 +747,18 @@
   </div>
 </div>
 
+<!-- DELETE CONFIRM MODAL -->
+<div id="del-overlay" class="overlay" style="display:none" onclick="if(event.target===this)closeDeleteConfirm()">
+  <div class="modal">
+    <div class="modal-title">ลบการจอง</div>
+    <p id="del-desc" style="font-size:15px;color:var(--muted);margin-bottom:8px;"></p>
+    <div class="modal-actions">
+      <button onclick="closeDeleteConfirm()" class="btn-cancel">ยกเลิก</button>
+      <button onclick="confirmDelete()" class="btn-danger" id="del-btn">ลบ</button>
+    </div>
+  </div>
+</div>
+
 <!-- CANCEL CONFIRM MODAL -->
 <div id="cancel-overlay" class="overlay" style="display:none" onclick="if(event.target===this)closeCancelConfirm()">
   <div class="modal">
@@ -1149,6 +1161,7 @@
       <div class="card-actions">
         <button class="btn-icon btn-edit"           onclick="openBookingForm(${b._row})" title="แก้ไข">✏️</button>
         <button class="btn-icon btn-cancel-booking" onclick="openCancelConfirm(${b._row})" title="ยกเลิก">❌</button>
+        <button class="btn-icon btn-delete"         onclick="openDeleteConfirm(${b._row})" title="ลบ">🗑️</button>
       </div>` : "";
 
     const dateTag = showDate
@@ -1342,6 +1355,40 @@
     } finally {
       btn.disabled = false;
       btn.textContent = "บันทึก";
+    }
+  }
+
+  // ===== DELETE =====
+  function openDeleteConfirm(row) {
+    const b = _bookingsByRow[row] ?? _allSearchBookings.find(x => x._row === row) ?? null;
+    document.getElementById("del-desc").textContent =
+      `ลบการจองของ "${b ? b.name : ""}" ออกจากระบบถาวร?`;
+    document.getElementById("del-overlay").style.display = "flex";
+    document.getElementById("del-overlay").dataset.row = row;
+  }
+
+  function closeDeleteConfirm() {
+    document.getElementById("del-overlay").style.display = "none";
+  }
+
+  async function confirmDelete() {
+    const row = parseInt(document.getElementById("del-overlay").dataset.row);
+    const btn = document.getElementById("del-btn");
+    btn.disabled = true;
+    btn.textContent = "กำลังลบ...";
+    try {
+      const res = await apiPost({ action: "delete", _row: row });
+      if (res.ok) {
+        closeDeleteConfirm();
+        loadBookings(true);
+      } else {
+        alert("เกิดข้อผิดพลาด: " + (res.error || "ไม่ทราบสาเหตุ"));
+      }
+    } catch (e) {
+      alert("ไม่สามารถเชื่อมต่อได้");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "ลบ";
     }
   }
 
