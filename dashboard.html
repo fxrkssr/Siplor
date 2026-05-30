@@ -405,6 +405,7 @@
 
     .btn-edit            { background: #dbeafe; color: #1d4ed8; }
     .btn-cancel-booking  { background: #fee2e2; color: #b91c1c; }
+    .btn-copy            { background: #f3f4f6; color: #374151; }
 
     .cancelled-tag {
       display: inline-block;
@@ -1157,12 +1158,15 @@
           ? `<span class="allergy-tag not-informed">&#8212; ไม่ได้แจ้ง</span>`
           : `<span class="allergy-tag no-allergy">&#10003; ไม่แพ้อาหาร</span>`);
 
-    const editBtns = (authed && !isPast(b) && !b.cancelled) ? `
-      <div class="card-actions">
+    const mgmtBtns = (authed && !isPast(b) && !b.cancelled) ? `
         <button class="btn-icon btn-edit"           onclick="openBookingForm(${b._row})" title="แก้ไข">✏️</button>
         <button class="btn-icon btn-cancel-booking" onclick="openCancelConfirm(${b._row})" title="ยกเลิก">❌</button>
-        <button class="btn-icon btn-delete"         onclick="openDeleteConfirm(${b._row})" title="ลบ">🗑️</button>
-      </div>` : "";
+        <button class="btn-icon btn-delete"         onclick="openDeleteConfirm(${b._row})" title="ลบ">🗑️</button>` : "";
+    const editBtns = `
+      <div class="card-actions">
+        <button class="btn-icon btn-copy" onclick="copyBookingText(${b._row}, this)" title="คัดลอกข้อความยืนยัน">📋</button>
+        ${mgmtBtns}
+      </div>`;
 
     const dateTag = showDate
       ? `<div class="card-date">📅 ${formatDateTH(b.date)}</div>` : "";
@@ -1435,6 +1439,38 @@
       body:    JSON.stringify(body),
     });
     return res.json();
+  }
+
+  // ===== COPY =====
+  function copyBookingText(row, btn) {
+    const b = _bookingsByRow[row]
+           ?? _allSearchBookings.find(x => x._row === row)
+           ?? _allCancelledBookings.find(x => x._row === row)
+           ?? null;
+    if (!b) return;
+
+    const days = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+    const dayName = days[new Date(b.date + 'T00:00:00').getDay()];
+    const text = `การจองเรียบร้อยครับ คุณ${b.name} วัน${dayName} ${b.time} ${b.count} ท่าน ${b.phone}`;
+
+    const finish = () => { btn.textContent = '✅'; setTimeout(() => btn.textContent = '📋', 1500); };
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(finish).catch(() => fallbackCopy(text, finish));
+    } else {
+      fallbackCopy(text, finish);
+    }
+  }
+
+  function fallbackCopy(text, cb) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    cb();
   }
 
   initDashboard();
