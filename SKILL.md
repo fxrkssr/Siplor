@@ -235,7 +235,7 @@ const upstream = all
 | ไฟล์ที่แก้ | สิ่งที่ต้องทำ | อัตโนมัติ? |
 |---|---|---|
 | `Code.gs` | Apps Script → Deploy → Manage deployments → New version → Deploy | ❌ ต้องทำเอง |
-| `worker.js` | Cloudflare Workers → Edit code → วาง code ใหม่ → Save & Deploy | ❌ ต้องทำเอง |
+| `worker.js` | `npx wrangler deploy` ใน terminal | ✅ อัตโนมัติ (wrangler CLI) |
 | `dashboard.html` | `git push` → Vercel deploy อัตโนมัติ | ✅ อัตโนมัติ |
 | `vercel.json` | `git push` → Vercel deploy อัตโนมัติ | ✅ อัตโนมัติ |
 | `SKILL.md` | `git push` | ✅ อัตโนมัติ |
@@ -246,9 +246,11 @@ const upstream = all
 3. Deploy → **Manage deployments** → ✏️ แก้ไข → **New version** → Deploy
 
 ### วิธี deploy Cloudflare Worker (worker.js)
-1. เปิด [dash.cloudflare.com](https://dash.cloudflare.com) → Workers & Pages → siplor
-2. Edit code → วาง code ใหม่ทับของเดิม
-3. **Save & Deploy**
+```
+npx wrangler deploy
+```
+> ต้อง login ก่อนครั้งแรกด้วย `npx wrangler login` (ปัจจุบัน login อยู่แล้วด้วย fxrkssr@gmail.com)
+> `wrangler.toml` อยู่ใน repo แล้ว — ไม่ต้องแก้อะไร
 
 ### ผลถ้าไม่ deploy
 - ไม่ deploy **Code.gs** → API ยังรันโค้ดเก่า (เช่น ฟิลด์ใหม่จะหายไป / format ผิด)

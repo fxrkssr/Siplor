@@ -1,0 +1,4 @@
+name = "siplor"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+account_id = "4ee061346ea639f08f461e32fdbd65bd"
