@@ -1449,9 +1449,12 @@
            ?? null;
     if (!b) return;
 
-    const days = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
-    const dayName = days[new Date(b.date + 'T00:00:00').getDay()];
-    const text = `การจองเรียบร้อยครับ คุณ${b.name} วัน${dayName} ${b.time} ${b.count} ท่าน ${b.phone}`;
+    const days   = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+    const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const d = new Date(b.date + 'T00:00:00');
+    const dayName = days[d.getDay()];
+    const dateStr = `${d.getDate()} ${months[d.getMonth()]}`;
+    const text = `การจองเรียบร้อยครับ คุณ${b.name} วัน${dayName}ที่ ${dateStr} ${b.time} ${b.count} ท่าน ${b.phone}`;
 
     const finish = () => { btn.textContent = '✅'; setTimeout(() => btn.textContent = '📋', 1500); };
 
