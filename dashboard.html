@@ -217,18 +217,18 @@
     .month-subtab.active { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.4); color: #fff; }
 
     /* Queue calendar */
-    .queue-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
-    .queue-header { text-align: center; font-size: 11px; color: rgba(255,255,255,0.45); padding: 4px 0; font-weight: 600; }
-    .queue-cell { background: rgba(255,255,255,0.06); border-radius: 6px; padding: 6px 2px; text-align: center; min-height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
-    .queue-empty { background: transparent !important; }
-    .queue-past  { opacity: 0.35; }
-    .queue-today { background: rgba(255,255,255,0.15) !important; outline: 1px solid rgba(255,255,255,0.35); }
-    .queue-date  { font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 500; }
-    .queue-count-green  { font-size: 15px; font-weight: 700; color: #4ade80; }
-    .queue-count-orange { font-size: 15px; font-weight: 700; color: #fb923c; }
-    .queue-count-red    { font-size: 15px; font-weight: 700; color: #f87171; }
-    .queue-count-zero   { font-size: 12px; color: rgba(255,255,255,0.2); }
-    .queue-count-closed { font-size: 10px; color: rgba(255,255,255,0.2); }
+    .queue-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .queue-header { text-align: center; font-size: 11px; color: #64748b; padding: 4px 0; font-weight: 600; }
+    .queue-cell { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 2px; text-align: center; min-height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+    .queue-empty { background: transparent !important; border: none !important; }
+    .queue-past  { opacity: 0.4; }
+    .queue-today { background: #eff6ff !important; border-color: #3b82f6 !important; }
+    .queue-date  { font-size: 12px; color: #475569; font-weight: 600; }
+    .queue-count-green  { font-size: 16px; font-weight: 700; color: #16a34a; }
+    .queue-count-orange { font-size: 16px; font-weight: 700; color: #d97706; }
+    .queue-count-red    { font-size: 16px; font-weight: 700; color: #dc2626; }
+    .queue-count-zero   { font-size: 13px; color: #cbd5e1; }
+    .queue-count-closed { font-size: 10px; color: #94a3b8; }
 
     /* ===== CONTENT ===== */
     .content { padding: 16px 16px 150px; max-width: 600px; margin: 0 auto; }
