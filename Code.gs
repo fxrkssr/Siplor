@@ -102,9 +102,10 @@ function doPost(e) {
     }
 
     if (body.action === "cancel") {
+      if (col.status < 0) return jsonResponse({ error: "ไม่พบ column สถานะ ใน Sheet" });
       const r    = sheet.getRange(rowIdx, 1, 1, nCols);
       const vals = r.getValues()[0];
-      if (col.status >= 0) vals[col.status] = "ยกเลิก";
+      vals[col.status] = "ยกเลิก";
       r.setValues([vals]);
       return jsonResponse({ ok: true });
     }
