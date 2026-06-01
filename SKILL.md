@@ -183,11 +183,12 @@ else                → ?date=YYYY-MM-DD (default: วันนี้ BKK)
 
 ### Modes
 - **รายวัน (day)** — เลือกวันที่ด้วย Flatpickr, ปุ่ม ⊞ toggle compact
-- **รายเดือน (month)** — มี 4 sub-tab:
+- **รายเดือน (month)** — มี 5 sub-tab:
   - 📌 ยังไม่ได้มา — `!isPast(b)`
   - ✅ ใช้บริการแล้ว — `isPast(b)`
   - 📋 ทั้งหมด — ทุก booking (ยกเว้นที่ยกเลิก)
   - ❌ ยกเลิก — fetch `?cancelled=1&month=` แยก → `_allCancelledBookings`
+  - ดูคิวว่าง — แสดง calendar grid รายเดือน ไม่ fetch เพิ่ม ใช้ข้อมูลจาก `_allBookings` / capacity MAX=15/วัน / สีเขียว ≤10, ส้ม 11-14, แดง ≥15 / วันอังคาร = "ปิด"
 
 ### State Variables (สำคัญมาก)
 
@@ -199,7 +200,7 @@ else                → ?date=YYYY-MM-DD (default: วันนี้ BKK)
 | `_bookingsByRow` | map `_row → booking` สำหรับ lookup edit/cancel/delete | `loadBookings()` (reset `{}`) |
 | `searchQuery` | คำค้นหาปัจจุบัน | `onSearch("")` |
 | `mode` | `"day"` หรือ `"month"` | `setMode()` |
-| `monthTab` | `"upcoming"/"visited"/"all"/"cancelled"` | `setMonthTab()` |
+| `monthTab` | `"upcoming"/"visited"/"all"/"cancelled"/"queue"` | `setMonthTab()` |
 | `editingRow` | `_row` ที่กำลัง edit (null = add ใหม่) | `closeBookingForm()` |
 | `cancelTarget` | `_row` ที่กำลังจะยกเลิก | `closeCancelConfirm()` |
 
@@ -278,3 +279,20 @@ function isPast(b) {
   ```js
   const b = _bookingsByRow[row] ?? _allSearchBookings.find(x => x._row === row) ?? null;
   ```
+
+### cancelled booking โผล่ใน main view (fixed 2026-06-01)
+- **Bug:** ยกเลิกแล้วแต่ booking ยังโผล่ใน tab upcoming/visited/all และ day mode
+- **สาเหตุ:** filter ใน `renderFromCache` กรองแค่ `isPast()` ไม่กรอง `b.cancelled`
+- **Fix:** เพิ่ม `.filter(b => !b.cancelled)` ที่ `sourceData` ก่อน tab filter ทุก mode
+  ```js
+  let filtered = filterBookings(sourceData).filter(b => !b.cancelled);
+  ```
+
+### cancel action ไม่เขียน Sheet (fixed 2026-06-01)
+- **Bug:** กดยกเลิก → frontend คิดว่าสำเร็จ แต่ column สถานะใน Sheet ไม่เปลี่ยน
+- **สาเหตุ:** Code.gs cancel block มี `if (col.status >= 0)` guard — ถ้า column ไม่เจอจะ skip เงียบๆ แล้วคืน `ok:true`; อีกสาเหตุ: Apps Script ไม่ได้ redeploy
+- **Fix:** เปลี่ยนเป็น return error ทันทีถ้า `col.status < 0` แทนที่จะ skip
+  ```js
+  if (col.status < 0) return jsonResponse({ error: "ไม่พบ column สถานะ ใน Sheet" });
+  ```
+- **หมายเหตุ:** ต้อง redeploy Code.gs ทุกครั้งที่แก้ไข — Apps Script ไม่ auto-deploy
