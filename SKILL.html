@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Siplor — Dev Notes</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --border: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --brand: #38bdf8;
+    --green: #4ade80;
+    --orange: #fb923c;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --purple: #c084fc;
+    --code-bg: #0f172a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Sarabun", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6; }
+  a { color: var(--brand); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Layout */
+  .sidebar { position: fixed; top: 0; left: 0; width: 220px; height: 100vh; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 16px 0; z-index: 10; }
+  .main { margin-left: 220px; padding: 32px 40px; max-width: 900px; }
+
+  /* Sidebar nav */
+  .sidebar-title { font-size: 13px; font-weight: 700; color: var(--brand); padding: 0 16px 12px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .nav-item { display: block; padding: 7px 16px; font-size: 13px; color: var(--muted); cursor: pointer; border-left: 2px solid transparent; transition: all 0.15s; }
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .nav-item.active { color: var(--brand); border-left-color: var(--brand); background: rgba(56,189,248,0.06); }
+  .nav-group { font-size: 11px; color: #475569; padding: 14px 16px 4px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+
+  /* Section */
+  section { margin-bottom: 48px; scroll-margin-top: 24px; }
+  h1 { font-size: 24px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+  h2 { font-size: 18px; font-weight: 700; color: var(--brand); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  h2::before { content: ''; display: inline-block; width: 3px; height: 18px; background: var(--brand); border-radius: 2px; }
+  h3 { font-size: 14px; font-weight: 700; color: var(--yellow); margin: 20px 0 10px; }
+
+  /* Warning box */
+  .warn { background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 14px; color: var(--yellow); }
+  .warn strong { font-weight: 700; }
+  .info { background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.25); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 14px; color: #7dd3fc; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 14px; }
+  th { background: var(--surface); color: var(--muted); font-weight: 600; text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { padding: 9px 12px; border-bottom: 1px solid rgba(51,65,85,0.5); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Code */
+  code { font-family: "Consolas", "Fira Code", monospace; font-size: 13px; background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; color: #a5f3fc; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; margin-bottom: 16px; }
+  pre code { background: none; border: none; padding: 0; font-size: 13px; color: #a5f3fc; }
+
+  /* Badges */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-green { background: rgba(74,222,128,0.15); color: var(--green); }
+  .badge-red   { background: rgba(241,113,113,0.15); color: var(--red); }
+  .badge-blue  { background: rgba(56,189,248,0.15); color: var(--brand); }
+  .badge-purple{ background: rgba(192,132,252,0.15); color: var(--purple); }
+
+  /* Steps */
+  .steps { counter-reset: step; list-style: none; }
+  .steps li { counter-increment: step; padding: 8px 0 8px 36px; position: relative; border-bottom: 1px solid rgba(51,65,85,0.4); font-size: 14px; }
+  .steps li:last-child { border-bottom: none; }
+  .steps li::before { content: counter(step); position: absolute; left: 0; top: 8px; width: 22px; height: 22px; background: var(--brand); color: var(--bg); border-radius: 50%; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+
+  /* Tag chips */
+  .chip { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; margin: 2px; background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+
+  /* Two-col grid */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .card-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .card-value { font-size: 14px; color: var(--text); }
+
+  /* Flow */
+  .flow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; font-size: 13px; }
+  .flow-node { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; color: var(--text); }
+  .flow-arrow { color: var(--muted); }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 20px; }
+    .grid2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="sidebar-title">Siplor Dev Notes</div>
+  <div class="nav-group">Overview</div>
+  <a class="nav-item" onclick="scrollTo('overview')">ภาพรวม</a>
+  <a class="nav-item" onclick="scrollTo('files')">ที่อยู่ไฟล์</a>
+  <a class="nav-item" onclick="scrollTo('deploy')">Deploy Checklist</a>
+  <div class="nav-group">Architecture</div>
+  <a class="nav-item" onclick="scrollTo('stack')">Tech Stack & Data Flow</a>
+  <a class="nav-item" onclick="scrollTo('sheets')">Google Sheets Columns</a>
+  <div class="nav-group">Components</div>
+  <a class="nav-item" onclick="scrollTo('appsscript')">Apps Script (Code.gs)</a>
+  <a class="nav-item" onclick="scrollTo('worker')">Cloudflare Worker</a>
+  <a class="nav-item" onclick="scrollTo('dashboard')">Dashboard</a>
+  <a class="nav-item" onclick="scrollTo('search')">Search</a>
+  <div class="nav-group">Reference</div>
+  <a class="nav-item" onclick="scrollTo('cancel')">Cancel vs Delete</a>
+  <a class="nav-item" onclick="scrollTo('audit')">Audit Trail</a>
+  <a class="nav-item" onclick="scrollTo('bugs')">Known Issues</a>
+</nav>
+
+<!-- Main content -->
+<main class="main">
+
+  <!-- Header -->
+  <section id="overview">
+    <h1>Siplor — Dev Notes</h1>
+    <p class="subtitle">ระบบจองโต๊ะร้าน Siplor | Google Sheets + Apps Script + Cloudflare Worker + Vercel</p>
+    <div class="warn">
+      <strong>⚠️ Claude Rule:</strong> ทุกครั้งที่แก้ไขเสร็จ ให้ถามว่า "จะให้ push ไหม?" เสมอ — ก่อนจบการสนทนา
+    </div>
+  </section>
+
+  <!-- Files -->
+  <section id="files">
+    <h2>ที่อยู่ไฟล์ทั้งหมด</h2>
+    <table>
+      <tr><th>ไฟล์</th><th>Local Path</th><th>Remote</th></tr>
+      <tr>
+        <td><code>Code.gs</code></td>
+        <td><code>C:\Users\KssR\Documents\Siplor\Code.gs</code></td>
+        <td><span class="badge badge-red">❌ วาง manual</span> Google Apps Script</td>
+      </tr>
+      <tr>
+        <td><code>worker.js</code></td>
+        <td><code>C:\Users\KssR\Documents\Siplor\worker.js</code></td>
+        <td><span class="badge badge-blue">CLI</span> siplor.fxrkssr.workers.dev</td>
+      </tr>
+      <tr>
+        <td><code>wrangler.toml</code></td>
+        <td><code>C:\Users\KssR\Documents\Siplor\wrangler.toml</code></td>
+        <td>GitHub (config Cloudflare)</td>
+      </tr>
+      <tr>
+        <td><code>dashboard.html</code></td>
+        <td><code>C:\Users\KssR\Documents\Siplor\dashboard.html</code></td>
+        <td><span class="badge badge-green">✅ Auto</span> Vercel ← GitHub</td>
+      </tr>
+      <tr>
+        <td><code>SKILL.md / SKILL.html</code></td>
+        <td><code>C:\Users\KssR\Documents\Siplor\SKILL.*</code></td>
+        <td>GitHub</td>
+      </tr>
+    </table>
+    <div class="info">GitHub repo: <a href="https://github.com/fxrkssr/Siplor" target="_blank">github.com/fxrkssr/Siplor</a></div>
+  </section>
+
+  <!-- Deploy -->
+  <section id="deploy">
+    <h2>Deploy Checklist</h2>
+    <table>
+      <tr><th>ไฟล์</th><th>วิธี</th><th>อัตโนมัติ?</th></tr>
+      <tr>
+        <td><code>Code.gs</code></td>
+        <td>วาง code → Manage deployments → New version</td>
+        <td><span class="badge badge-red">❌ ทำเอง</span></td>
+      </tr>
+      <tr>
+        <td><code>worker.js</code></td>
+        <td><code>npx wrangler deploy</code></td>
+        <td><span class="badge badge-blue">CLI</span></td>
+      </tr>
+      <tr>
+        <td><code>dashboard.html</code></td>
+        <td><code>git push</code> → Vercel auto-deploy</td>
+        <td><span class="badge badge-green">✅ Auto</span></td>
+      </tr>
+    </table>
+
+    <h3>วิธี deploy Apps Script (Code.gs)</h3>
+    <ol class="steps">
+      <li>เปิด <a href="https://script.google.com" target="_blank">script.google.com</a> → เลือกโปรเจกต์ Siplor</li>
+      <li>คัดลอก code จาก <code>C:\Users\KssR\Documents\Siplor\Code.gs</code> วางทับของเดิม</li>
+      <li>Deploy → <strong>Manage deployments</strong> → ✏️ แก้ไข → <strong>New version</strong> → Deploy</li>
+    </ol>
+
+    <h3>วิธี deploy Cloudflare Worker</h3>
+    <pre><code>cd C:\Users\KssR\Documents\Siplor
+npx wrangler deploy</code></pre>
+    <div class="info">login อยู่แล้วด้วย fxrkssr@gmail.com — ถ้า token หมดอายุ รัน <code>npx wrangler login</code> ก่อน</div>
+
+    <div class="warn">
+      <strong>ผลถ้าไม่ deploy:</strong><br>
+      • ไม่ deploy <code>Code.gs</code> → API รันโค้ดเก่า (field ใหม่หาย / format ผิด)<br>
+      • ไม่ deploy <code>worker.js</code> → parameter ใหม่ไม่ถูกส่งผ่าน (เช่น <code>?cancelled=1</code>)
+    </div>
+  </section>
+
+  <!-- Stack -->
+  <section id="stack">
+    <h2>Tech Stack & Data Flow</h2>
+    <table>
+      <tr><th>ชั้น</th><th>เครื่องมือ</th><th>หน้าที่</th></tr>
+      <tr><td>Input</td><td>Google Forms</td><td>แอดมินกรอกข้อมูลการจอง</td></tr>
+      <tr><td>DB</td><td>Google Sheets</td><td>เก็บข้อมูลการจอง</td></tr>
+      <tr><td>API</td><td>Google Apps Script</td><td>doGet / doPost อ่าน-เขียน Sheets</td></tr>
+      <tr><td>Proxy</td><td>Cloudflare Worker</td><td>CORS proxy, forward GET/POST</td></tr>
+      <tr><td>Frontend</td><td>dashboard.html → Vercel</td><td>หน้าเว็บพนักงาน</td></tr>
+      <tr><td>Source</td><td>GitHub (fxrkssr/Siplor)</td><td>เก็บ code ทั้งหมด</td></tr>
+    </table>
+
+    <h3>Data Flow — อ่านข้อมูล</h3>
+    <div class="flow">
+      <div class="flow-node">แอดมินกรอก Google Form</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">Google Sheets</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">Apps Script doGet</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">Cloudflare Worker</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">Dashboard (Vercel)</div>
+    </div>
+
+    <h3>Data Flow — เขียน/แก้/ยกเลิก/ลบ</h3>
+    <div class="flow">
+      <div class="flow-node">Dashboard action</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">Cloudflare Worker (POST)</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">Apps Script doPost</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node">Google Sheets</div>
+    </div>
+
+    <div class="info"><strong>ทำไมต้องมี Cloudflare Worker?</strong><br>
+    Browser เรียก Apps Script URL ตรงๆ ไม่ได้เพราะ CORS — Worker inject header <code>Access-Control-Allow-Origin: *</code> ให้</div>
+  </section>
+
+  <!-- Sheets -->
+  <section id="sheets">
+    <h2>Google Sheets — โครงสร้าง Column</h2>
+    <div class="info">Column header ถูก map ใน <code>getColMap()</code> ใน Code.gs — ไม่ hardcode index → เพิ่ม column ได้ไม่พัง</div>
+    <table>
+      <tr><th>Column</th><th>Header</th><th>หน้าที่</th></tr>
+      <tr><td>A</td><td>Timestamp</td><td>กรอกอัตโนมัติโดย Form</td></tr>
+      <tr><td>B</td><td>วันที่จอง</td><td>YYYY-MM-DD</td></tr>
+      <tr><td>C</td><td>เวลาที่จอง</td><td>HH:mm</td></tr>
+      <tr><td>D</td><td>ชื่อลูกค้า</td><td>ชื่อ-นามสกุล</td></tr>
+      <tr><td>E</td><td>เบอร์โทรศัพท์</td><td>อาจเป็น number → Code.gs prepend "0"</td></tr>
+      <tr><td>F</td><td>จำนวนลูกค้า (คน)</td><td>ตัวเลข</td></tr>
+      <tr><td>G</td><td>ข้อมูลแพ้อาหาร</td><td>string</td></tr>
+      <tr><td>H</td><td>หมายเหตุเพิ่มเติม</td><td>string</td></tr>
+      <tr><td>I</td><td>เพิ่มโดย</td><td>audit</td></tr>
+      <tr><td>J</td><td>เพิ่มเมื่อ</td><td>audit</td></tr>
+      <tr><td>K</td><td>แก้ไขโดย</td><td>audit</td></tr>
+      <tr><td>L</td><td>แก้ไขเมื่อ</td><td>audit</td></tr>
+      <tr><td>M</td><td>สถานะ</td><td><code>"ยกเลิก"</code> = ถูกยกเลิก, ว่าง = ปกติ</td></tr>
+    </table>
+  </section>
+
+  <!-- Apps Script -->
+  <section id="appsscript">
+    <h2>Apps Script (Code.gs)</h2>
+
+    <h3>doGet — parameters ที่รับได้</h3>
+    <table>
+      <tr><th>Parameter</th><th>หน้าที่</th></tr>
+      <tr><td><code>?date=YYYY-MM-DD</code></td><td>ดึง booking วันนั้น (ยกเว้นที่ยกเลิก)</td></tr>
+      <tr><td><code>?month=YYYY-MM</code></td><td>ดึง booking เดือนนั้น (ยกเว้นที่ยกเลิก)</td></tr>
+      <tr><td><code>?all=1</code></td><td>ดึงทุก booking — ใช้สำหรับ search</td></tr>
+      <tr><td><code>?cancelled=1&amp;month=YYYY-MM</code></td><td>ดึงเฉพาะที่ยกเลิก ของเดือนนั้น</td></tr>
+    </table>
+    <div class="info">Fields ที่ return: <code>_row</code>, <code>date</code>, <code>time</code>, <code>name</code>, <code>phone</code>, <code>count</code>, <code>allergy</code>, <code>hasAllergy</code>, <code>notes</code>, <code>addedBy</code>, <code>addedAt</code>, <code>editedBy</code>, <code>editedAt</code>, <code>cancelled</code><br>
+    <code>_row</code> = row index ใน Sheets (1-based) — ใช้สำหรับ edit/cancel/delete</div>
+
+    <h3>doPost — actions ที่รับได้</h3>
+    <table>
+      <tr><th>action</th><th>หน้าที่</th></tr>
+      <tr><td><code>"add"</code></td><td>sheet.appendRow() — เพิ่ม row ใหม่</td></tr>
+      <tr><td><code>"edit"</code></td><td>sheet.getRange(rowIdx).setValues() — แก้ข้อมูล</td></tr>
+      <tr><td><code>"cancel"</code></td><td>เขียน <code>"ยกเลิก"</code> ลง column สถานะ (M) — soft delete</td></tr>
+      <tr><td><code>"delete"</code></td><td>sheet.deleteRow(rowIdx) — ลบออกถาวร</td></tr>
+    </table>
+
+    <h3>Helper Functions</h3>
+    <table>
+      <tr><th>Function</th><th>หน้าที่</th></tr>
+      <tr><td><code>getColMap(headers)</code></td><td>map ชื่อ header → index column</td></tr>
+      <tr><td><code>formatTime(val)</code></td><td>Date object หรือ string → "HH:mm"</td></tr>
+      <tr><td><code>formatPhone(val)</code></td><td>number → prepend "0", string → ใช้ตรงๆ</td></tr>
+      <tr><td><code>formatDateTime(val)</code></td><td>Sheets Date → "YYYY-MM-DD HH:MM"</td></tr>
+    </table>
+  </section>
+
+  <!-- Worker -->
+  <section id="worker">
+    <h2>Cloudflare Worker (worker.js)</h2>
+    <div class="grid2">
+      <div class="card"><div class="card-title">URL</div><div class="card-value"><a href="https://siplor.fxrkssr.workers.dev">siplor.fxrkssr.workers.dev</a></div></div>
+      <div class="card"><div class="card-title">Config</div><div class="card-value"><code>wrangler.toml</code> — account_id, name, main</div></div>
+    </div>
+
+    <h3>Parameter forwarding logic</h3>
+    <pre><code>if (cancelled)   → ?cancelled=1[&month=...]
+else if (all)    → ?all=1
+else if (month)  → ?month=YYYY-MM
+else             → ?date=YYYY-MM-DD (default: วันนี้ BKK)</code></pre>
+    <div class="warn">ทุกครั้งที่เพิ่ม parameter ใหม่ใน Apps Script ต้อง update <code>worker.js</code> ด้วย แล้ว <code>npx wrangler deploy</code></div>
+  </section>
+
+  <!-- Dashboard -->
+  <section id="dashboard">
+    <h2>Dashboard (dashboard.html)</h2>
+
+    <h3>Auth</h3>
+    <table>
+      <tr><th>Account</th><th>รหัส</th></tr>
+      <tr><td>แอดมิน 1</td><td><code>7777@</code></td></tr>
+      <tr><td>แอดมิน 2</td><td><code>2608@</code></td></tr>
+    </table>
+    <div class="info">Refresh หน้า = ต้องใส่รหัสใหม่ (ไม่มี persist) | ปุ่มจัดการไม่แสดงสำหรับ booking ที่ผ่านแล้ว หรือถูกยกเลิก</div>
+
+    <h3>Modes & Sub-tabs</h3>
+    <table>
+      <tr><th>Mode</th><th>Sub-tab</th><th>เงื่อนไข</th></tr>
+      <tr><td rowspan="2">รายวัน</td><td>—</td><td>เลือกวันด้วย Flatpickr</td></tr>
+      <tr><td>⊞ compact</td><td>toggle แสดงแบบย่อ</td></tr>
+      <tr><td rowspan="5">รายเดือน</td><td>📌 ยังไม่ได้มา</td><td><code>!isPast(b)</code></td></tr>
+      <tr><td>✅ ใช้บริการแล้ว</td><td><code>isPast(b)</code></td></tr>
+      <tr><td>📋 ทั้งหมด</td><td>ทุก booking (ยกเว้นยกเลิก)</td></tr>
+      <tr><td>❌ ยกเลิก</td><td>fetch <code>?cancelled=1&month=</code> → <code>_allCancelledBookings</code></td></tr>
+      <tr><td>ดูคิวว่าง</td><td>calendar grid จาก <code>_allBookings</code>, capacity MAX=15/วัน</td></tr>
+    </table>
+
+    <h3>State Variables (สำคัญมาก)</h3>
+    <table>
+      <tr><th>Variable</th><th>หน้าที่</th><th>ถูก reset โดย</th></tr>
+      <tr><td><code>_allBookings</code></td><td>bookings วัน/เดือนปัจจุบัน</td><td><code>loadBookings()</code></td></tr>
+      <tr><td><code>_allSearchBookings</code></td><td>bookings ทุกวัน (สำหรับ search)</td><td><code>toggleSearch()</code> ตอนปิด</td></tr>
+      <tr><td><code>_allCancelledBookings</code></td><td>bookings ที่ยกเลิก ของเดือนที่เลือก</td><td><code>loadCancelledBookings()</code></td></tr>
+      <tr><td><code>_bookingsByRow</code></td><td>map <code>_row → booking</code> สำหรับ lookup</td><td><code>loadBookings()</code> (reset {})</td></tr>
+      <tr><td><code>searchQuery</code></td><td>คำค้นหาปัจจุบัน</td><td><code>onSearch("")</code></td></tr>
+      <tr><td><code>mode</code></td><td>"day" หรือ "month"</td><td><code>setMode()</code></td></tr>
+      <tr><td><code>monthTab</code></td><td>"upcoming"/"visited"/"all"/"cancelled"/"queue"</td><td><code>setMonthTab()</code></td></tr>
+      <tr><td><code>editingRow</code></td><td>_row ที่กำลัง edit (null = add ใหม่)</td><td><code>closeBookingForm()</code></td></tr>
+      <tr><td><code>cancelTarget</code></td><td>_row ที่กำลังจะยกเลิก</td><td><code>closeCancelConfirm()</code></td></tr>
+    </table>
+    <div class="warn"><strong>⚠️ _bookingsByRow reset ทุกครั้งที่ loadBookings() รัน</strong> — lookup จาก _row ต้อง fallback เสมอ:<br>
+    <code>_bookingsByRow[row] ?? _allSearchBookings.find(x => x._row === row) ?? null</code></div>
+
+    <h3>ดูคิวว่าง — calendar grid</h3>
+    <table>
+      <tr><th>จำนวน</th><th>สี</th><th>ความหมาย</th></tr>
+      <tr><td>≤ 10</td><td style="color:#16a34a">● สีเขียว</td><td>ว่างเยอะ</td></tr>
+      <tr><td>11–14</td><td style="color:#d97706">● สีส้ม</td><td>เริ่มเต็ม</td></tr>
+      <tr><td>≥ 15</td><td style="color:#dc2626">● สีแดง</td><td>เต็มแล้ว (MAX=15)</td></tr>
+      <tr><td>0</td><td style="color:#cbd5e1">—</td><td>ยังไม่มีจอง</td></tr>
+      <tr><td>อังคาร</td><td style="color:#94a3b8">ปิด</td><td>วันหยุด</td></tr>
+    </table>
+
+    <h3>Allergy Tags</h3>
+    <table>
+      <tr><th>ค่า</th><th>สี</th><th>แสดง</th></tr>
+      <tr><td>มีข้อมูล (ไม่ใช่ ไม่แพ้/ไม่ได้แจ้ง)</td><td style="color:var(--red)">แดง</td><td>⚠ แพ้ ...</td></tr>
+      <tr><td>"ไม่แพ้"</td><td style="color:var(--green)">เขียว</td><td>✓ ไม่แพ้อาหาร</td></tr>
+      <tr><td>"ไม่ได้แจ้ง" หรือ ""</td><td style="color:var(--yellow)">เหลือง</td><td>— ไม่ได้แจ้ง</td></tr>
+    </table>
+  </section>
+
+  <!-- Search -->
+  <section id="search">
+    <h2>Search (🔍)</h2>
+    <div class="info">กดปุ่ม 🔍 มุมขวาบน → โหลด <code>?all=1</code> อัตโนมัติ | พิมพ์ทันที → real-time จากชื่อ, เบอร์, หมายเหตุ</div>
+    <div class="warn"><strong>⚠️ ต้องแยก _allBookings กับ _allSearchBookings ออกจากกัน</strong><br>
+    ถ้าใช้ตัวเดียวกัน <code>loadBookings()</code> จะทับข้อมูล all ด้วยข้อมูลรายวัน ทำให้ search filter ติดวัน</div>
+  </section>
+
+  <!-- Cancel vs Delete -->
+  <section id="cancel">
+    <h2>Cancel vs Delete</h2>
+    <table>
+      <tr><th>action</th><th>ผลใน Sheets</th><th>มองเห็นใน Dashboard</th></tr>
+      <tr>
+        <td>❌ ยกเลิก</td>
+        <td>เขียน <code>"ยกเลิก"</code> ลง column M (สถานะ)</td>
+        <td>ซ่อนจาก normal view, ดูได้ใน tab ❌ ยกเลิก</td>
+      </tr>
+      <tr>
+        <td>🗑️ ลบ</td>
+        <td>ลบ row ออกถาวร</td>
+        <td>หายไปเลย ไม่สามารถกู้คืนได้</td>
+      </tr>
+    </table>
+    <div class="info">ทั้งสองปุ่มแสดงเฉพาะตอน login (<code>authed = true</code>) และ booking ยังไม่ผ่าน (<code>!isPast(b)</code>) และยังไม่ถูกยกเลิก (<code>!b.cancelled</code>)</div>
+  </section>
+
+  <!-- Audit -->
+  <section id="audit">
+    <h2>Audit Trail</h2>
+    <div class="info">แสดงเฉพาะตอน <code>authed = true</code> | Sheet ต้องมี column: เพิ่มโดย, เพิ่มเมื่อ, แก้ไขโดย, แก้ไขเมื่อ</div>
+    <table>
+      <tr><th>Field</th><th>บันทึกตอน</th><th>หมายเหตุ</th></tr>
+      <tr><td><code>addedBy / addedAt</code></td><td><code>action:"add"</code> เท่านั้น</td><td>ไม่ถูกทับตอน edit</td></tr>
+      <tr><td><code>editedBy / editedAt</code></td><td><code>action:"edit"</code> เท่านั้น</td><td>—</td></tr>
+    </table>
+    <div class="warn">ถ้าแก้ Code.gs แล้วไม่ redeploy → format วันที่ audit จะผิด (ได้ "Thu May 28..." แทน "2026-05-28")</div>
+  </section>
+
+  <!-- Known Issues -->
+  <section id="bugs">
+    <h2>Known Issues / Notes</h2>
+    <table>
+      <tr><th>หัวข้อ</th><th>รายละเอียด</th></tr>
+      <tr>
+        <td>_row race condition</td>
+        <td><code>_row</code> index ใช้ตอน load — ถ้ามีคนลบ row พร้อมกัน อาจ edit ผิด row (edge case, low risk)</td>
+      </tr>
+      <tr>
+        <td>No API auth</td>
+        <td>ใครรู้ Worker URL ก็ POST ได้ (acceptable สำหรับ internal tool)</td>
+      </tr>
+      <tr>
+        <td>วันอังคารบล็อก 2 ชั้น</td>
+        <td>onFormSubmit trigger ใน Apps Script + validation ใน dashboard web form</td>
+      </tr>
+    </table>
+
+    <h3>✅ Fixed: _bookingsByRow reset bug (2026-05-29)</h3>
+    <table>
+      <tr><th></th><th></th></tr>
+      <tr><td>Bug</td><td>กดแก้ไขจากหน้า search แล้ว form เปิดว่าง</td></tr>
+      <tr><td>สาเหตุ</td><td><code>loadBookings()</code> reset <code>_bookingsByRow = {}</code> ทำให้ booking นอก view หายออกจาก map</td></tr>
+      <tr><td>Fix</td><td><code>_bookingsByRow[row] ?? _allSearchBookings.find(x => x._row === row) ?? null</code></td></tr>
+    </table>
+
+    <h3>✅ Fixed: cancelled booking โผล่ใน main view (2026-06-01)</h3>
+    <table>
+      <tr><th></th><th></th></tr>
+      <tr><td>Bug</td><td>ยกเลิกแล้วแต่ booking ยังโผล่ใน tab upcoming/visited/all และ day mode</td></tr>
+      <tr><td>สาเหตุ</td><td>filter ใน <code>renderFromCache</code> กรองแค่ <code>isPast()</code> ไม่กรอง <code>b.cancelled</code></td></tr>
+      <tr><td>Fix</td><td>เพิ่ม <code>.filter(b => !b.cancelled)</code> ที่ <code>sourceData</code> ก่อน tab filter ทุก mode</td></tr>
+    </table>
+
+    <h3>✅ Fixed: cancel action ไม่เขียน Sheet (2026-06-01)</h3>
+    <table>
+      <tr><th></th><th></th></tr>
+      <tr><td>Bug</td><td>กดยกเลิก → frontend คิดว่าสำเร็จ แต่ column สถานะใน Sheet ไม่เปลี่ยน</td></tr>
+      <tr><td>สาเหตุ</td><td>Code.gs cancel block มี guard — ถ้า column ไม่เจอจะ skip เงียบๆ แล้วคืน <code>ok:true</code>; หรือ Apps Script ไม่ได้ redeploy</td></tr>
+      <tr><td>Fix</td><td>เปลี่ยนเป็น return error ทันทีถ้า <code>col.status &lt; 0</code> | ต้อง redeploy Code.gs ทุกครั้งที่แก้</td></tr>
+    </table>
+
+    <h3>✅ Fixed: form-overlay ปิดตอนแตะขอบบนมือถือ (2026-06-01)</h3>
+    <table>
+      <tr><th></th><th></th></tr>
+      <tr><td>Bug</td><td>กรอกข้อมูลจองบนมือถือแล้วแตะขอบนอก modal → form ปิดทันที ข้อมูลที่พิมพ์หายหมด</td></tr>
+      <tr><td>สาเหตุ</td><td><code>#form-overlay</code> มี <code>onclick="if(event.target===this)closeBookingForm()"</code> — แตะ overlay พื้นหลัง = ปิด form</td></tr>
+      <tr><td>Fix</td><td>ลบ <code>onclick</code> ออกจาก <code>#form-overlay</code> — ปิดได้แค่กดปุ่ม "ยกเลิก" ข้างล่างเท่านั้น</td></tr>
+    </table>
+  </section>
+
+</main>
+
+<script>
+function scrollTo(id) {
+  document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+// Highlight nav on scroll
+const sections = document.querySelectorAll('section[id]');
+const navItems = document.querySelectorAll('.nav-item');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => {
+    if (window.scrollY >= s.offsetTop - 60) current = s.id;
+  });
+  navItems.forEach(n => {
+    n.classList.toggle('active', n.getAttribute('onclick')?.includes(`'${current}'`));
+  });
+}, { passive: true });
+</script>
+</body>
+</html>

@@ -296,3 +296,14 @@ function isPast(b) {
   if (col.status < 0) return jsonResponse({ error: "ไม่พบ column สถานะ ใน Sheet" });
   ```
 - **หมายเหตุ:** ต้อง redeploy Code.gs ทุกครั้งที่แก้ไข — Apps Script ไม่ auto-deploy
+
+### form-overlay ปิดตอนแตะขอบบนมือถือ (fixed 2026-06-01)
+- **Bug:** กรอกข้อมูลจองบนมือถือแล้วแตะขอบนอก modal → form ปิดทันที ข้อมูลที่พิมพ์หายหมด
+- **สาเหตุ:** `form-overlay` มี `onclick="if(event.target===this)closeBookingForm()"` — แตะ overlay พื้นหลัง = ปิด form
+- **Fix:** ลบ `onclick` ออกจาก `#form-overlay` — ปิดได้แค่กดปุ่ม "ยกเลิก" ข้างล่างเท่านั้น
+  ```html
+  <!-- ก่อน -->
+  <div id="form-overlay" class="overlay" style="display:none" onclick="if(event.target===this)closeBookingForm()">
+  <!-- หลัง -->
+  <div id="form-overlay" class="overlay" style="display:none">
+  ```
