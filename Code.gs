@@ -106,6 +106,7 @@ function doPost(e) {
       const vals = r.getValues()[0];
       if (col.status >= 0) vals[col.status] = "ยกเลิก";
       r.setValues([vals]);
+      SpreadsheetApp.flush();
       return jsonResponse({ ok: true });
     }
 
