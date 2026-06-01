@@ -1025,7 +1025,7 @@
     }
 
     const sourceData = searchQuery ? _allSearchBookings : _allBookings;
-    let filtered = filterBookings(sourceData);
+    let filtered = filterBookings(sourceData).filter(b => !b.cancelled);
 
     if (!searchQuery && mode === "month") {
       filtered = monthTab === "upcoming" ? filtered.filter(b => !isPast(b))
