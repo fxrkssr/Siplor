@@ -1274,6 +1274,22 @@
     const cancelledTag = b.cancelled
       ? `<span class="cancelled-tag">❌ ยกเลิกแล้ว</span>` : "";
 
+    const cust = _customerList.find(c => c.phone === b.phone);
+    const visitBadge = (cust && cust.totalVisits >= 1)
+      ? `<span style="
+            display:inline-block;
+            font-size:11px;
+            font-weight:700;
+            background:#fef3c7;
+            color:#92400e;
+            border:1px solid #fde68a;
+            border-radius:10px;
+            padding:2px 8px;
+            margin-left:6px;
+            vertical-align:middle;
+          ">⭐ ${cust.totalVisits} ครั้ง</span>`
+      : "";
+
     return `
       <div class="booking-card${cls}">
         <div class="time-col">
@@ -1282,7 +1298,7 @@
         </div>
         <div class="info-col">
           ${dateTag}
-          <div class="guest-name">${escHtml(b.name)}</div>
+          <div class="guest-name">${escHtml(b.name)}${visitBadge}</div>
           <div class="guest-phone">${escHtml(b.phone)}</div>
           ${allergyTag}
           ${cancelledTag}
