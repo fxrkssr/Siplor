@@ -628,6 +628,66 @@
     }
 
     .shake { animation: shake 0.4s ease; }
+
+    /* ===== AUTOCOMPLETE ===== */
+    .autocomplete-wrap { position: relative; }
+
+    .autocomplete-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      z-index: 999;
+      max-height: 220px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .autocomplete-dropdown.open { display: block; }
+
+    .ac-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+
+    .ac-item:last-child { border-bottom: none; }
+    .ac-item:hover, .ac-item.focused { background: #f0f6ff; }
+
+    .ac-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .ac-meta {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      gap: 8px;
+    }
+
+    .ac-visits {
+      background: var(--brand);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: 10px;
+    }
+
+    .ac-returning {
+      font-size: 11px;
+      color: var(--gold);
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -724,12 +784,20 @@
       <select id="f-time" class="field-select"></select>
     </div>
     <div class="field-group">
-      <label class="field-label">ชื่อลูกค้า</label>
-      <input type="text" id="f-name" class="field-input" placeholder="ชื่อลูกค้า">
+      <label class="field-label">ชื่อลูกค้า <span id="returning-badge" style="display:none" class="ac-returning">⭐ ลูกค้าเก่า</span></label>
+      <div class="autocomplete-wrap">
+        <input type="text" id="f-name" class="field-input" placeholder="ชื่อลูกค้า"
+               autocomplete="off"
+               oninput="onNameInput(this.value)"
+               onkeydown="onNameKeydown(event)"
+               onblur="scheduleCloseAC()">
+        <div id="ac-dropdown" class="autocomplete-dropdown"></div>
+      </div>
     </div>
     <div class="field-group">
       <label class="field-label">เบอร์โทรศัพท์</label>
-      <input type="tel" id="f-phone" class="field-input" placeholder="เบอร์โทรศัพท์">
+      <input type="tel" id="f-phone" class="field-input" placeholder="เบอร์โทรศัพท์"
+             oninput="onPhoneInput(this.value)">
     </div>
     <div class="field-group">
       <label class="field-label">จำนวนลูกค้า</label>
@@ -814,6 +882,8 @@
   let cancelTarget           = null;
   let _allCancelledBookings  = [];
   let _bookingsByRow     = {};
+  let _customerList      = [];   // ← NEW: customer cache
+  let _acFocusIdx        = -1;   // ← NEW: keyboard nav index
 
   // ===== INIT =====
   function initDashboard() {
@@ -833,6 +903,7 @@
       onChange() { loadBookings(); }
     });
     goToday();
+    loadCustomers(); // ← NEW
   }
 
   // ===== HELPERS =====
@@ -1321,6 +1392,8 @@
     document.getElementById("f-time").value    = b ? b.time    : TIMES[0];
     document.getElementById("f-count").value   = b ? b.count   : "2";
     document.getElementById("f-allergy").value = b ? b.allergy : "ไม่แพ้";
+    document.getElementById("returning-badge").style.display = "none";
+    closeAC();
     document.getElementById("form-overlay").style.display = "flex";
   }
 
@@ -1551,6 +1624,117 @@
     document.execCommand('copy');
     document.body.removeChild(ta);
     cb();
+  }
+
+  // ===== CUSTOMER AUTOCOMPLETE =====
+
+  async function loadCustomers() {
+    try {
+      const res  = await fetch(API_URL + "?customers=1");
+      const data = await res.json();
+      _customerList = Array.isArray(data) ? data : [];
+    } catch (e) {
+      _customerList = [];
+    }
+  }
+
+  function onNameInput(val) {
+    _acFocusIdx = -1;
+    const q = val.trim().toLowerCase();
+    if (!q) { closeAC(); return; }
+
+    const matches = _customerList.filter(c =>
+      c.name.toLowerCase().includes(q) || c.phone.includes(q)
+    ).slice(0, 8);
+
+    if (!matches.length) { closeAC(); return; }
+
+    const dd = document.getElementById("ac-dropdown");
+    dd.innerHTML = matches.map((c, i) => `
+      <div class="ac-item" data-idx="${i}"
+           onmousedown="selectCustomer(${i})"
+           onmouseover="setACFocus(${i})">
+        <div class="ac-name">${highlight(c.name, q)}</div>
+        <div class="ac-meta">
+          <span>${c.phone}</span>
+          ${c.totalVisits > 1 ? `<span class="ac-visits">${c.totalVisits} ครั้ง</span>` : ''}
+          ${c.allergy && c.allergy !== 'ไม่แพ้' && c.allergy !== 'ไม่ได้แจ้ง'
+            ? `<span style="color:var(--danger)">⚠ ${c.allergy}</span>` : ''}
+        </div>
+      </div>
+    `).join('');
+    dd.dataset.matches = JSON.stringify(matches);
+    dd.classList.add('open');
+  }
+
+  function onPhoneInput(val) {
+    const q = val.trim();
+    if (!q || q.length < 4) return;
+    const match = _customerList.find(c => c.phone === q || c.phone.includes(q));
+    if (match) autofillCustomer(match);
+  }
+
+  function highlight(text, q) {
+    const idx = text.toLowerCase().indexOf(q);
+    if (idx < 0) return text;
+    return text.substring(0, idx)
+      + `<mark style="background:#fef08a;border-radius:3px;padding:0 1px">${text.substring(idx, idx + q.length)}</mark>`
+      + text.substring(idx + q.length);
+  }
+
+  function selectCustomer(idx) {
+    const dd = document.getElementById("ac-dropdown");
+    const matches = JSON.parse(dd.dataset.matches || '[]');
+    if (matches[idx]) autofillCustomer(matches[idx]);
+  }
+
+  function autofillCustomer(c) {
+    document.getElementById("f-name").value  = c.name;
+    document.getElementById("f-phone").value = c.phone;
+    if (c.allergy) document.getElementById("f-allergy").value = c.allergy;
+    if (c.notes)   document.getElementById("f-notes").value   = c.notes;
+    // returning badge
+    const badge = document.getElementById("returning-badge");
+    badge.style.display = c.totalVisits > 1 ? "inline" : "none";
+    closeAC();
+  }
+
+  function setACFocus(idx) {
+    _acFocusIdx = idx;
+    document.querySelectorAll('.ac-item').forEach((el, i) => {
+      el.classList.toggle('focused', i === idx);
+    });
+  }
+
+  function onNameKeydown(e) {
+    const dd = document.getElementById("ac-dropdown");
+    if (!dd.classList.contains('open')) return;
+    const items = dd.querySelectorAll('.ac-item');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _acFocusIdx = Math.min(_acFocusIdx + 1, items.length - 1);
+      setACFocus(_acFocusIdx);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _acFocusIdx = Math.max(_acFocusIdx - 1, 0);
+      setACFocus(_acFocusIdx);
+    } else if (e.key === 'Enter' && _acFocusIdx >= 0) {
+      e.preventDefault();
+      selectCustomer(_acFocusIdx);
+    } else if (e.key === 'Escape') {
+      closeAC();
+    }
+  }
+
+  function scheduleCloseAC() {
+    setTimeout(closeAC, 150);
+  }
+
+  function closeAC() {
+    const dd = document.getElementById("ac-dropdown");
+    dd.classList.remove('open');
+    dd.innerHTML = '';
+    _acFocusIdx = -1;
   }
 
   initDashboard();
