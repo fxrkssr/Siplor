@@ -33,9 +33,14 @@ export default {
     const month     = url.searchParams.get("month");
     const all       = url.searchParams.get("all");
     const cancelled = url.searchParams.get("cancelled");
+    const customers = url.searchParams.get("customers"); // ← NEW
 
     let upstream;
-    if (cancelled) {
+
+    if (customers) {
+      // ── NEW: ดึง customer list ──
+      upstream = `${APPS_SCRIPT_URL}?customers=1`;
+    } else if (cancelled) {
       upstream = month
         ? `${APPS_SCRIPT_URL}?cancelled=1&month=${month}`
         : `${APPS_SCRIPT_URL}?cancelled=1`;
