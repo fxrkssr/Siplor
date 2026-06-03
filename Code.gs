@@ -301,8 +301,10 @@ function createAndMigrateCustomers() {
   if (lastRow > 1) {
     const phoneRange = custSheet.getRange(2, 1, lastRow - 1, 1);
     phoneRange.setNumberFormat("@");
+    SpreadsheetApp.flush();
     const fixed = phoneRange.getValues().map(([p]) => [formatPhone(p)]);
     phoneRange.setValues(fixed);
+    SpreadsheetApp.flush();
   }
 }
 

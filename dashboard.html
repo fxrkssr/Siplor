@@ -797,8 +797,13 @@
     </div>
     <div class="field-group">
       <label class="field-label">เบอร์โทรศัพท์</label>
-      <input type="tel" id="f-phone" class="field-input" placeholder="เบอร์โทรศัพท์"
-             oninput="onPhoneInput(this.value)">
+      <div class="autocomplete-wrap">
+        <input type="tel" id="f-phone" class="field-input" placeholder="เบอร์โทรศัพท์"
+               autocomplete="off"
+               oninput="onPhoneInput(this.value)"
+               onblur="scheduleClosePhoneAC()">
+        <div id="ac-phone-dropdown" class="autocomplete-dropdown"></div>
+      </div>
     </div>
     <div class="field-group">
       <label class="field-label">จำนวนลูกค้า</label>
@@ -1700,10 +1705,43 @@
 
   function onPhoneInput(val) {
     const q = val.trim();
-    if (!q || q.length < 4) return;
-    const match = _customerList.find(c => c.phone === q);
-    if (match) autofillCustomer(match);
+    if (!q || q.length < 3) { closePhoneAC(); return; }
+
+    const matches = _customerList.filter(c => c.phone.includes(q)).slice(0, 8);
+    if (!matches.length) { closePhoneAC(); return; }
+
+    const dd = document.getElementById("ac-phone-dropdown");
+    dd.innerHTML = matches.map((c, i) => `
+      <div class="ac-item" data-idx="${i}"
+           onmousedown="selectPhoneCustomer(${i})"
+           onmouseover="setACFocus(${i})">
+        <div class="ac-name">${highlight(c.phone, q)}</div>
+        <div class="ac-meta">
+          <span>${escHtml(c.name)}</span>
+          ${c.totalVisits > 1 ? `<span class="ac-visits">${c.totalVisits} ครั้ง</span>` : ''}
+          ${c.allergy && c.allergy !== 'ไม่แพ้' && c.allergy !== 'ไม่ได้แจ้ง'
+            ? `<span style="color:var(--danger)">⚠ ${escHtml(c.allergy)}</span>` : ''}
+        </div>
+      </div>
+    `).join('');
+    dd.dataset.matches = JSON.stringify(matches);
+    dd.classList.add('open');
   }
+
+  function selectPhoneCustomer(idx) {
+    const dd = document.getElementById("ac-phone-dropdown");
+    const matches = JSON.parse(dd.dataset.matches || '[]');
+    if (matches[idx]) autofillCustomer(matches[idx]);
+    closePhoneAC();
+  }
+
+  function closePhoneAC() {
+    const dd = document.getElementById("ac-phone-dropdown");
+    dd.classList.remove('open');
+    dd.innerHTML = '';
+  }
+
+  function scheduleClosePhoneAC() { setTimeout(closePhoneAC, 150); }
 
   function highlight(text, q) {
     const idx = text.toLowerCase().indexOf(q);
