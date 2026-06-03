@@ -271,6 +271,90 @@ function jsonResponse(data) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// รันครั้งเดียวเพื่อ backfill ลูกค้าทุกคนจาก booking sheet → Customers sheet
+function syncAllCustomers() {
+  const ss        = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet     = ss.getSheets()[0];
+  const custSheet = ss.getSheetByName("Customers");
+  if (!custSheet) { SpreadsheetApp.getUi().alert("ไม่พบ sheet ชื่อ Customers"); return; }
+
+  const data    = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => String(h).trim());
+  const col     = getColMap(headers);
+
+  // group bookings by phone
+  const map = {};
+  for (let i = 1; i < data.length; i++) {
+    const row    = data[i];
+    const status = col.status >= 0 ? String(row[col.status] || "").trim() : "";
+    if (status === "ยกเลิก") continue;
+    const phone   = col.phone >= 0 ? formatPhone(row[col.phone]) : "";
+    const name    = col.name  >= 0 ? String(row[col.name]  || "").trim() : "";
+    if (!phone && !name) continue;
+    const key = phone || name;
+    const rawDate = col.date >= 0 ? row[col.date] : "";
+    let dateStr = "";
+    if (rawDate instanceof Date) {
+      dateStr = Utilities.formatDate(rawDate, "Asia/Bangkok", "yyyy-MM-dd");
+    } else {
+      dateStr = String(rawDate).substring(0, 10);
+    }
+    if (!map[key]) {
+      map[key] = { phone, name, allergy: "", notes: "", lastVisit: "", totalVisits: 0 };
+    }
+    map[key].totalVisits++;
+    if (name) map[key].name = name;
+    const allergy = col.allergy >= 0 ? String(row[col.allergy] || "").trim() : "";
+    if (allergy) map[key].allergy = allergy;
+    const notes = col.notes >= 0 ? String(row[col.notes] || "").trim() : "";
+    if (notes) map[key].notes = notes;
+    if (dateStr && (!map[key].lastVisit || dateStr > map[key].lastVisit)) map[key].lastVisit = dateStr;
+  }
+
+  // upsert each customer
+  let added = 0, updated = 0;
+  Object.values(map).forEach(c => {
+    const custData = custSheet.getDataRange().getValues();
+    const ch = custData[0].map(v => String(v).trim());
+    const ci = {
+      phone: ch.indexOf("phone"), name: ch.indexOf("name"),
+      allergy: ch.indexOf("allergy"), notes: ch.indexOf("notes"),
+      lastVisit: ch.indexOf("lastVisit"), totalVisits: ch.indexOf("totalVisits"),
+    };
+    let found = false;
+    for (let i = 1; i < custData.length; i++) {
+      const rowPhone = ci.phone >= 0 ? String(custData[i][ci.phone] || "").trim() : "";
+      if (rowPhone !== c.phone) continue;
+      const r    = custSheet.getRange(i + 1, 1, 1, custData[0].length);
+      const vals = r.getValues()[0];
+      if (ci.name        >= 0) vals[ci.name]        = c.name;
+      if (ci.allergy     >= 0) vals[ci.allergy]      = c.allergy;
+      if (ci.notes       >= 0) vals[ci.notes]        = c.notes;
+      if (ci.totalVisits >= 0) vals[ci.totalVisits]  = c.totalVisits;
+      if (ci.lastVisit   >= 0) vals[ci.lastVisit]    = c.lastVisit;
+      r.setValues([vals]);
+      found = true; updated++; break;
+    }
+    if (!found) {
+      const custData2 = custSheet.getDataRange().getValues();
+      const nCols = custData2[0].length;
+      const ch2   = custData2[0].map(v => String(v).trim());
+      const ci2   = { phone: ch2.indexOf("phone"), name: ch2.indexOf("name"), allergy: ch2.indexOf("allergy"), notes: ch2.indexOf("notes"), lastVisit: ch2.indexOf("lastVisit"), totalVisits: ch2.indexOf("totalVisits") };
+      const newRow = new Array(nCols).fill("");
+      if (ci2.phone >= 0) newRow[ci2.phone] = c.phone;
+      if (ci2.name  >= 0) newRow[ci2.name]  = c.name;
+      if (ci2.allergy >= 0) newRow[ci2.allergy] = c.allergy;
+      if (ci2.notes   >= 0) newRow[ci2.notes]   = c.notes;
+      if (ci2.lastVisit   >= 0) newRow[ci2.lastVisit]   = c.lastVisit;
+      if (ci2.totalVisits >= 0) newRow[ci2.totalVisits] = c.totalVisits;
+      custSheet.appendRow(newRow);
+      added++;
+    }
+  });
+
+  SpreadsheetApp.getUi().alert(`Sync เสร็จ!\nเพิ่มใหม่: ${added} คน\nอัปเดต: ${updated} คน`);
+}
+
 // รันครั้งเดียวเพื่อติดตั้ง trigger บล็อกวันอังคาร
 function setupTuesdayBlock() {
   ScriptApp.getProjectTriggers().forEach(t => {
