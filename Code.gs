@@ -15,8 +15,28 @@ function doGet(e) {
   const monthParam     = (e.parameter && e.parameter.month)     ? e.parameter.month : null;
   const allParam       = (e.parameter && e.parameter.all)       ? true              : false;
   const cancelledParam = (e.parameter && e.parameter.cancelled) ? true              : false;
+  const customersParam = (e.parameter && e.parameter.customers) ? true              : false;
 
-  if (!dateParam && !monthParam && !allParam && !cancelledParam) return jsonResponse([]);
+  if (!dateParam && !monthParam && !allParam && !cancelledParam && !customersParam) return jsonResponse([]);
+
+  if (customersParam) {
+    const headers = data[0].map(h => String(h).trim());
+    const col     = getColMap(headers);
+    const map     = {};
+    for (let i = 1; i < data.length; i++) {
+      const row    = data[i];
+      const status = col.status >= 0 ? String(row[col.status] || "").trim() : "";
+      if (status === "ยกเลิก") continue;
+      const phone = col.phone >= 0 ? formatPhone(row[col.phone]) : "";
+      const name  = col.name  >= 0 ? String(row[col.name] || "").trim() : "";
+      if (!phone && !name) continue;
+      const key = phone || name;
+      if (!map[key]) map[key] = { name, phone, totalVisits: 0 };
+      map[key].totalVisits++;
+      if (name) map[key].name = name;
+    }
+    return jsonResponse(Object.values(map).sort((a, b) => b.totalVisits - a.totalVisits));
+  }
 
   const headers = data[0].map(h => String(h).trim());
   const col     = getColMap(headers);
