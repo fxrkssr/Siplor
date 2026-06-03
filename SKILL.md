@@ -93,13 +93,15 @@ Browser เรียก Apps Script URL ตรงๆ ไม่ได้เพร
 
 Column header ที่ต้องมีใน Sheet (ชื่อใช้ map ใน `getColMap()` ใน `Code.gs`):
 
+**Sheet หลัก: "Form Responses 1"** (`SHEET_NAME` constant ใน Code.gs)
+
 | Column | Header | หน้าที่ |
 |---|---|---|
 | A | Timestamp | กรอกอัตโนมัติโดย Form |
 | B | วันที่จอง | YYYY-MM-DD |
 | C | เวลาที่จอง | HH:mm |
 | D | ชื่อลูกค้า | ชื่อ-นามสกุล |
-| E | เบอร์โทรศัพท์ | อาจเป็น number → Code.gs จัดการ |
+| E | เบอร์โทรศัพท์ | อาจเป็น number → `formatPhone()` จัดการ |
 | F | จำนวนลูกค้า (คน) | ตัวเลข |
 | G | ข้อมูลแพ้อาหาร | string |
 | H | หมายเหตุเพิ่มเติม | string |
@@ -108,6 +110,22 @@ Column header ที่ต้องมีใน Sheet (ชื่อใช้ map
 | K | แก้ไขโดย | audit |
 | L | แก้ไขเมื่อ | audit |
 | M | สถานะ | `"ยกเลิก"` = ถูกยกเลิก, ว่าง = ปกติ |
+| N | ยกเลิกโดย | audit — บันทึกตอน cancel |
+| O | ยกเลิกเมื่อ | audit — บันทึกตอน cancel |
+
+**Sheet Customers** — ข้อมูลลูกค้า (เบอร์ unique key)
+
+| Column | Header | หน้าที่ |
+|---|---|---|
+| A | phone | เบอร์โทร (text format เพื่อรักษา 0 นำหน้า) |
+| B | name | ชื่อลูกค้า |
+| C | allergy | ข้อมูลแพ้อาหาร |
+| D | notes | หมายเหตุ |
+| E | lastVisit | วันจองล่าสุด |
+| F | totalVisits | จำนวนครั้งที่จอง (ไม่นับที่ยกเลิก) |
+
+> ⚠️ Column A ต้อง format เป็น Text — ถ้าเป็น Number จะตัด 0 นำหน้า
+> สร้าง/migrate ได้ด้วย `createAndMigrateCustomers()` ใน Apps Script
 
 > `getColMap()` หา index จากชื่อ header — ไม่ hardcode index → เพิ่ม column ได้โดยไม่พัง
 
@@ -124,23 +142,28 @@ Column header ที่ต้องมีใน Sheet (ชื่อใช้ map
 | `?month=YYYY-MM` | ดึง booking เดือนนั้น (ยกเว้นที่ยกเลิก) |
 | `?all=1` | ดึงทุก booking (ยกเว้นที่ยกเลิก) — ใช้สำหรับ search |
 | `?cancelled=1&month=YYYY-MM` | ดึงเฉพาะที่ยกเลิก ของเดือนนั้น |
+| `?customers=1` | ดึงข้อมูลลูกค้าทั้งหมดจาก Customers sheet |
 
-- แต่ละ booking return field: `_row`, `date`, `time`, `name`, `phone`, `count`, `allergy`, `hasAllergy`, `notes`, `addedBy`, `addedAt`, `editedBy`, `editedAt`, `cancelled`
+- แต่ละ booking return field: `_row`, `date`, `time`, `name`, `phone`, `count`, `allergy`, `hasAllergy`, `notes`, `addedBy`, `addedAt`, `editedBy`, `editedAt`, `cancelledBy`, `cancelledAt`, `cancelled`
 - `_row` = row index ใน Sheets (1-based) — ใช้สำหรับ edit/cancel/delete
 
 ### doPost — actions ที่รับได้
 | action | หน้าที่ |
 |---|---|
-| `"add"` | `sheet.appendRow()` — เพิ่ม row ใหม่ |
-| `"edit"` | `sheet.getRange(rowIdx).setValues()` — แก้ข้อมูล |
-| `"cancel"` | เขียน `"ยกเลิก"` ลง column `สถานะ` (M) — soft delete |
-| `"delete"` | `sheet.deleteRow(rowIdx)` — ลบออกจาก Sheets ถาวร |
+| `"add"` | เพิ่ม row ใหม่ + upsert Customers sheet |
+| `"edit"` | แก้ข้อมูล; ถ้า `body.restore=true` → clear สถานะ/cancelledBy/At + upsert Customers (+1) |
+| `"cancel"` | เขียน `"ยกเลิก"` + cancelledBy/At ลง column N/O — upsert Customers (-1) |
+| `"delete"` | ลบ row ถาวร + upsert Customers (-1) ถ้า booking ไม่ใช่ cancelled |
 
 ### Helper Functions
 - `getColMap(headers)` — map ชื่อ header → index column
 - `formatTime(val)` — Date object หรือ string → `"HH:mm"`
-- `formatPhone(val)` — number → prepend `"0"`, string → ใช้ตรงๆ
+- `formatPhone(val)` — number หรือ 9-digit string → prepend `"0"`, อื่นๆ → ใช้ตรงๆ
 - `formatDateTime(val)` — Sheets Date object → `"YYYY-MM-DD HH:MM"`
+- `isRealPhone(phone)` — false ถ้าเป็น `""`, `"0"`, `"00"`
+- `upsertCustomer(custSheet, phone, name, allergy, notes, date, delta)` — upsert Customers sheet by phone; delta=+1/-1 สำหรับ totalVisits
+- `syncAllCustomers()` — backfill Customers sheet จาก booking ทั้งหมด (รันเองจาก Apps Script)
+- `createAndMigrateCustomers()` — สร้าง Customers sheet ใหม่ + migrate (รันครั้งเดียว)
 
 ### Trigger
 - `setupTuesdayBlock()` — รันครั้งเดียวเพื่อติดตั้ง onFormSubmit trigger
@@ -160,7 +183,8 @@ Column header ที่ต้องมีใน Sheet (ชื่อใช้ map
 
 ### Parameter forwarding logic
 ```js
-if (cancelled)      → ?cancelled=1[&month=...]
+if (customers)      → ?customers=1
+else if (cancelled) → ?cancelled=1[&month=...]
 else if (all)       → ?all=1
 else if (month)     → ?month=YYYY-MM
 else                → ?date=YYYY-MM-DD (default: วันนี้ BKK)
@@ -179,7 +203,8 @@ else                → ?date=YYYY-MM-DD (default: วันนี้ BKK)
 - 2 accounts: `const USERS = { "7777@": "แอดมิน 1", "2608@": "แอดมิน 2" }`
 - กดปุ่ม 🔒 → ใส่รหัส → `authed = true` → แสดงปุ่ม ✏️❌🗑️ + ปุ่มเพิ่ม + audit
 - Refresh หน้า = ต้องใส่รหัสใหม่ (ไม่มี persist)
-- ปุ่มแก้ไข/ยกเลิก/ลบ **ไม่แสดง** สำหรับ booking ที่ผ่านแล้ว (`isPast(b)`) หรือที่ยกเลิกแล้ว
+- ปุ่มแก้ไข/ยกเลิก/ลบ แสดงเฉพาะ `authed && !isPast(b) && !b.cancelled`
+- ปุ่ม 🔄 กู้คืน แสดงเฉพาะ `authed && b.cancelled` — เปิด form กู้คืน+ย้ายวัน
 
 ### Modes
 - **รายวัน (day)** — เลือกวันที่ด้วย Flatpickr, ปุ่ม ⊞ toggle compact
@@ -202,7 +227,9 @@ else                → ?date=YYYY-MM-DD (default: วันนี้ BKK)
 | `mode` | `"day"` หรือ `"month"` | `setMode()` |
 | `monthTab` | `"upcoming"/"visited"/"all"/"cancelled"/"queue"` | `setMonthTab()` |
 | `editingRow` | `_row` ที่กำลัง edit (null = add ใหม่) | `closeBookingForm()` |
+| `isRestoring` | true = เปิด form จาก cancelled booking (กู้คืน) | `closeBookingForm()` |
 | `cancelTarget` | `_row` ที่กำลังจะยกเลิก | `closeCancelConfirm()` |
+| `_customerList` | customer list จาก Customers sheet | `loadCustomers()` |
 
 > ⚠️ **`_bookingsByRow` reset ทุกครั้งที่ `loadBookings()` รัน** — lookup จาก `_row` ต้อง fallback ไปหาใน `_allSearchBookings` ด้วยเสมอ
 
@@ -244,25 +271,41 @@ function isPast(b) {
 
 ---
 
+## Customer Autocomplete
+
+- โหลด `?customers=1` ตอน `initDashboard()` → เก็บใน `_customerList`
+- หลังโหลดเสร็จเรียก `renderFromCache()` เพื่ออัปเดต badge โดยไม่ต้อง login
+- **ช่องชื่อ** — พิมพ์ขึ้น dropdown, ค้นจากชื่อหรือเบอร์ (`onNameInput`)
+- **ช่องเบอร์** — พิมพ์ 3 ตัวขึ้นไปขึ้น dropdown, ค้นจากเบอร์ (`onPhoneInput`) → `ac-phone-dropdown`
+- เลือกจาก dropdown → `autofillCustomer(c)` เติมชื่อ/เบอร์/แพ้/หมายเหตุ
+- เบอร์ exact match → auto-fill โดยไม่ต้องเลือก; prefix match → ต้องเลือกเอง
+- **Visit badge** ⭐ แสดงทุก mode (ไม่ต้อง login) — lookup จาก `_customerList` โดย phone
+
+---
+
 ## Audit Trail
 
 - แสดงเฉพาะตอน `authed = true`
-- Sheet ต้องมี column: `เพิ่มโดย`, `เพิ่มเมื่อ`, `แก้ไขโดย`, `แก้ไขเมื่อ`
+- Sheet ต้องมี column: `เพิ่มโดย`, `เพิ่มเมื่อ`, `แก้ไขโดย`, `แก้ไขเมื่อ`, `ยกเลิกโดย`, `ยกเลิกเมื่อ`
 - `addedBy/addedAt` — บันทึกตอน `action:"add"` เท่านั้น
 - `editedBy/editedAt` — บันทึกตอน `action:"edit"` เท่านั้น (ไม่ทับ addedBy)
+- `cancelledBy/cancelledAt` — บันทึกตอน `action:"cancel"`; restore จะ clear ค่าเหล่านี้
 
 > ⚠️ ถ้าแก้ Code.gs แล้วไม่ redeploy → format วันที่ audit จะผิด (ได้ "Thu May 28..." แทน)
 
 ---
 
-## Cancel vs Delete
+## Cancel vs Delete vs Restore
 
-| action | ผลใน Sheets | มองเห็นใน dashboard |
-|---|---|---|
-| **ยกเลิก (❌)** | เขียน `"ยกเลิก"` ลง column M (สถานะ) | ซ่อนจาก normal view, ดูได้ใน tab ❌ ยกเลิก |
-| **ลบ (🗑️)** | ลบ row ออกถาวร | หายไปเลย |
+| action | ผลใน Sheets | ผลใน Customers sheet | มองเห็นใน dashboard |
+|---|---|---|---|
+| **ยกเลิก (❌)** | เขียน `"ยกเลิก"` + cancelledBy/At | totalVisits -1 | ซ่อนจาก normal view, ดูได้ใน tab ❌ ยกเลิก |
+| **ลบ (🗑️)** | ลบ row ถาวร | totalVisits -1 (ถ้าไม่ใช่ cancelled) | หายไปเลย |
+| **กู้คืน (🔄)** | clear สถานะ/cancelledBy/At + แก้วันที่ | totalVisits +1 | กลับมาใน normal view |
 
-ทั้งสองปุ่มแสดงเฉพาะตอน login (`authed = true`) และ booking ยังไม่ผ่าน (`!isPast(b)`) และยังไม่ถูกยกเลิก (`!b.cancelled`)
+- ยกเลิก/ลบ แสดงเฉพาะ `authed && !isPast(b) && !b.cancelled`
+- กู้คืน แสดงเฉพาะ `authed && b.cancelled`
+- `openBookingForm(row, restore=true)` — lookup จาก `_bookingsByRow ?? _allSearchBookings ?? _allCancelledBookings`
 
 ---
 
@@ -296,6 +339,18 @@ function isPast(b) {
   if (col.status < 0) return jsonResponse({ error: "ไม่พบ column สถานะ ใน Sheet" });
   ```
 - **หมายเหตุ:** ต้อง redeploy Code.gs ทุกครั้งที่แก้ไข — Apps Script ไม่ auto-deploy
+
+### cancelledBy/At + restore (added 2026-06-03)
+- cancel action ส่ง `cancelledBy/cancelledAt` → Code.gs บันทึกลง column ยกเลิกโดย/เมื่อ
+- restore = `action:"edit"` + `body.restore:true` → Code.gs clear สถานะ + cancelledBy/At
+- audit line แสดง "ยกเลิกโดย ..." เฉพาะตอน `authed = true`
+
+### Customers sheet auto-sync (added 2026-06-03)
+- `upsertCustomer()` ถูกเรียกจากทุก doPost action
+- phone normalize ด้วย `formatPhone()` ทั้งตอนอ่านและเขียน — รองรับ number, 9-digit string, 10-digit string
+- `isRealPhone()` skip phone `""/"0"/"00"` ไม่เขียนลง Customers
+- `appendRow()` ไม่ inherit column format → ต้อง `setNumberFormat("@").setValue(phone)` หลัง append ทุกครั้ง
+- migration: `createAndMigrateCustomers()` สร้าง sheet + backfill ครั้งเดียว; ต้องใช้ `SHEET_NAME` ไม่ใช่ `getSheets()[0]`
 
 ### form-overlay ปิดตอนแตะขอบบนมือถือ (fixed 2026-06-01)
 - **Bug:** กรอกข้อมูลจองบนมือถือแล้วแตะขอบนอก modal → form ปิดทันที ข้อมูลที่พิมพ์หายหมด
