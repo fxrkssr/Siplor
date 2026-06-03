@@ -307,8 +307,10 @@ function createAndMigrateCustomers() {
 // รันครั้งเดียวเพื่อ backfill ลูกค้าทุกคนจาก booking sheet → Customers sheet
 function syncAllCustomers() {
   const ss        = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet     = ss.getSheetByName(SHEET_NAME);
+  const allSheets = ss.getSheets().map(s => s.getName());
+  const sheet     = ss.getSheetByName(SHEET_NAME) || ss.getSheets().find(s => s.getName() !== "Customers" && s.getName() !== "Sheet1");
   const custSheet = ss.getSheetByName("Customers");
+  if (!sheet)     { SpreadsheetApp.getUi().alert("ไม่พบ booking sheet\n\nชื่อ sheet ที่มี: " + allSheets.join(", ")); return; }
   if (!custSheet) { SpreadsheetApp.getUi().alert("ไม่พบ sheet ชื่อ Customers"); return; }
 
   const data    = sheet.getDataRange().getValues();
