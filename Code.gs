@@ -307,7 +307,7 @@ function createAndMigrateCustomers() {
 // รันครั้งเดียวเพื่อ backfill ลูกค้าทุกคนจาก booking sheet → Customers sheet
 function syncAllCustomers() {
   const ss        = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet     = ss.getSheets()[0];
+  const sheet     = ss.getSheetByName(SHEET_NAME);
   const custSheet = ss.getSheetByName("Customers");
   if (!custSheet) { SpreadsheetApp.getUi().alert("ไม่พบ sheet ชื่อ Customers"); return; }
 
