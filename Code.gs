@@ -2,7 +2,7 @@
 // เมนู Extensions > Apps Script > วาง > Deploy > New deployment > Web app
 // Execute as: Me | Who has access: Anyone
 
-const SHEET_NAME = "การตอบกลับแบบฟอร์ม 1";
+const SHEET_NAME = "Form Responses 1";
 
 function doGet(e) {
   const ss    = SpreadsheetApp.getActiveSpreadsheet();
