@@ -58,9 +58,11 @@ function doGet(e) {
       notes:      col.notes    >= 0 ? String(row[col.notes]   || "").trim() : "",
       addedBy:    col.addedBy  >= 0 ? String(row[col.addedBy]  || "").trim() : "",
       addedAt:    col.addedAt  >= 0 ? formatDateTime(row[col.addedAt])  : "",
-      editedBy:   col.editedBy >= 0 ? String(row[col.editedBy] || "").trim() : "",
-      editedAt:   col.editedAt >= 0 ? formatDateTime(row[col.editedAt]) : "",
-      cancelled:  isCancelled,
+      editedBy:      col.editedBy     >= 0 ? String(row[col.editedBy]  || "").trim() : "",
+      editedAt:      col.editedAt     >= 0 ? formatDateTime(row[col.editedAt])       : "",
+      cancelledBy:   col.cancelledBy  >= 0 ? String(row[col.cancelledBy] || "").trim() : "",
+      cancelledAt:   col.cancelledAt  >= 0 ? formatDateTime(row[col.cancelledAt])    : "",
+      cancelled:     isCancelled,
     });
   }
 
@@ -106,6 +108,8 @@ function doPost(e) {
       const r    = sheet.getRange(rowIdx, 1, 1, nCols);
       const vals = r.getValues()[0];
       vals[col.status] = "ยกเลิก";
+      if (col.cancelledBy >= 0) vals[col.cancelledBy] = body.cancelledBy || "";
+      if (col.cancelledAt >= 0) vals[col.cancelledAt] = body.cancelledAt || "";
       r.setValues([vals]);
       return jsonResponse({ ok: true });
     }
@@ -122,7 +126,9 @@ function doPost(e) {
       if (col.notes    >= 0) vals[col.notes]    = body.notes || "";
       if (col.editedBy >= 0) vals[col.editedBy] = body.editedBy || "";
       if (col.editedAt >= 0) vals[col.editedAt] = body.editedAt || "";
-      if (body.restore && col.status >= 0) vals[col.status] = "";
+      if (body.restore && col.status >= 0)      vals[col.status]      = "";
+      if (body.restore && col.cancelledBy >= 0) vals[col.cancelledBy] = "";
+      if (body.restore && col.cancelledAt >= 0) vals[col.cancelledAt] = "";
       r.setValues([vals]);
       return jsonResponse({ ok: true });
     }
@@ -164,11 +170,13 @@ function getColMap(headers) {
     count:    headers.findIndex(h => h.includes("จำนวน")),
     allergy:  headers.findIndex(h => h.includes("แพ้")),
     notes:    headers.findIndex(h => h.includes("หมายเหตุ")),
-    addedBy:  headers.findIndex(h => h === "เพิ่มโดย"),
-    addedAt:  headers.findIndex(h => h === "เพิ่มเมื่อ"),
-    editedBy: headers.findIndex(h => h === "แก้ไขโดย"),
-    editedAt: headers.findIndex(h => h === "แก้ไขเมื่อ"),
-    status:   headers.findIndex(h => h === "สถานะ"),
+    addedBy:      headers.findIndex(h => h === "เพิ่มโดย"),
+    addedAt:      headers.findIndex(h => h === "เพิ่มเมื่อ"),
+    editedBy:     headers.findIndex(h => h === "แก้ไขโดย"),
+    editedAt:     headers.findIndex(h => h === "แก้ไขเมื่อ"),
+    status:       headers.findIndex(h => h === "สถานะ"),
+    cancelledBy:  headers.findIndex(h => h === "ยกเลิกโดย"),
+    cancelledAt:  headers.findIndex(h => h === "ยกเลิกเมื่อ"),
   };
 }
 

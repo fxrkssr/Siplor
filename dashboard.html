@@ -1270,8 +1270,9 @@
       ? `<div class="card-date">📅 ${formatDateTH(b.date)}</div>` : "";
 
     const auditParts = [];
-    if (b.addedBy)  auditParts.push(`เพิ่มโดย ${escHtml(b.addedBy)}${b.addedAt  ? " " + formatAuditTime(b.addedAt)  : ""}`);
-    if (b.editedBy) auditParts.push(`แก้ไขโดย ${escHtml(b.editedBy)}${b.editedAt ? " " + formatAuditTime(b.editedAt) : ""}`);
+    if (b.addedBy)      auditParts.push(`เพิ่มโดย ${escHtml(b.addedBy)}${b.addedAt       ? " " + formatAuditTime(b.addedAt)      : ""}`);
+    if (b.editedBy)     auditParts.push(`แก้ไขโดย ${escHtml(b.editedBy)}${b.editedAt     ? " " + formatAuditTime(b.editedAt)     : ""}`);
+    if (b.cancelledBy)  auditParts.push(`ยกเลิกโดย ${escHtml(b.cancelledBy)}${b.cancelledAt ? " " + formatAuditTime(b.cancelledAt) : ""}`);
     const auditLine = (authed && auditParts.length)
       ? `<div class="audit-info">${auditParts.map(p => `<span>${p}</span>`).join("")}</div>` : "";
 
@@ -1540,7 +1541,9 @@
     btn.disabled = true;
     btn.textContent = "กำลังบันทึก...";
     try {
-      const res = await apiPost({ action: "cancel", _row: cancelTarget });
+      const nowBKK = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Bangkok" })
+                                .replace("T", " ").substring(0, 16);
+      const res = await apiPost({ action: "cancel", _row: cancelTarget, cancelledBy: currentUser, cancelledAt: nowBKK });
       if (res.ok) {
         closeCancelConfirm();
         loadBookings(true);
