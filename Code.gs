@@ -226,6 +226,11 @@ function upsertCustomer(custSheet, phone, name, allergy, notes, date, delta) {
     if (ci.lastVisit   >= 0) newRow[ci.lastVisit]    = date || "";
     if (ci.totalVisits >= 0) newRow[ci.totalVisits]  = 1;
     custSheet.appendRow(newRow);
+    // force phone cell to text AFTER append (appendRow ignores pre-set column format)
+    if (ci.phone >= 0) {
+      const phoneCell = custSheet.getRange(custSheet.getLastRow(), ci.phone + 1);
+      phoneCell.setNumberFormat("@").setValue(phone);
+    }
   }
 }
 
@@ -289,6 +294,14 @@ function createAndMigrateCustomers() {
   // format phone column as text to preserve leading 0
   custSheet.getRange("A:A").setNumberFormat("@");
   syncAllCustomers();
+  // re-read phone column and rewrite as text to fix any leading-0 lost during sync
+  const lastRow = custSheet.getLastRow();
+  if (lastRow > 1) {
+    const phoneRange = custSheet.getRange(2, 1, lastRow - 1, 1);
+    phoneRange.setNumberFormat("@");
+    const fixed = phoneRange.getValues().map(([p]) => [formatPhone(p)]);
+    phoneRange.setValues(fixed);
+  }
 }
 
 // รันครั้งเดียวเพื่อ backfill ลูกค้าทุกคนจาก booking sheet → Customers sheet
