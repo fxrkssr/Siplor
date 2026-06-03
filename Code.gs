@@ -106,12 +106,13 @@ function doGet(e) {
 
 function doPost(e) {
   try {
-    const body   = JSON.parse(e.postData.contents);
-    const ss     = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet  = ss.getSheets()[0];
-    const data   = sheet.getDataRange().getValues();
-    const col    = getColMap(data[0].map(h => String(h).trim()));
-    const nCols  = data[0].length;
+    const body      = JSON.parse(e.postData.contents);
+    const ss        = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet     = ss.getSheets()[0];
+    const data      = sheet.getDataRange().getValues();
+    const col       = getColMap(data[0].map(h => String(h).trim()));
+    const nCols     = data[0].length;
+    const custSheet = ss.getSheetByName("Customers");
 
     if (body.action === "add") {
       const newRow = new Array(nCols).fill("");
@@ -126,6 +127,7 @@ function doPost(e) {
       if (col.addedBy  >= 0) newRow[col.addedBy]  = body.addedBy  || "";
       if (col.addedAt  >= 0) newRow[col.addedAt]  = body.addedAt  || "";
       sheet.appendRow(newRow);
+      if (custSheet) upsertCustomer(custSheet, body.phone, body.name, body.allergy, body.notes, body.date, 1);
       return jsonResponse({ ok: true });
     }
 
@@ -133,7 +135,11 @@ function doPost(e) {
     if (isNaN(rowIdx) || rowIdx < 2) return jsonResponse({ error: "invalid row" });
 
     if (body.action === "delete") {
+      const bookingVals = sheet.getRange(rowIdx, 1, 1, nCols).getValues()[0];
+      const phone = col.phone >= 0 ? formatPhone(bookingVals[col.phone]) : "";
+      const status = col.status >= 0 ? String(bookingVals[col.status] || "").trim() : "";
       sheet.deleteRow(rowIdx);
+      if (custSheet && phone && status !== "ยกเลิก") upsertCustomer(custSheet, phone, "", "", "", "", -1);
       return jsonResponse({ ok: true });
     }
 
@@ -141,10 +147,12 @@ function doPost(e) {
       if (col.status < 0) return jsonResponse({ error: "ไม่พบ column สถานะ ใน Sheet" });
       const r    = sheet.getRange(rowIdx, 1, 1, nCols);
       const vals = r.getValues()[0];
+      const phone = col.phone >= 0 ? formatPhone(vals[col.phone]) : "";
       vals[col.status] = "ยกเลิก";
       if (col.cancelledBy >= 0) vals[col.cancelledBy] = body.cancelledBy || "";
       if (col.cancelledAt >= 0) vals[col.cancelledAt] = body.cancelledAt || "";
       r.setValues([vals]);
+      if (custSheet && phone) upsertCustomer(custSheet, phone, "", "", "", "", -1);
       return jsonResponse({ ok: true });
     }
 
@@ -164,12 +172,55 @@ function doPost(e) {
       if (body.restore && col.cancelledBy >= 0) vals[col.cancelledBy] = "";
       if (body.restore && col.cancelledAt >= 0) vals[col.cancelledAt] = "";
       r.setValues([vals]);
+      const delta = body.restore ? 1 : 0;
+      if (custSheet && body.phone) upsertCustomer(custSheet, body.phone, body.name, body.allergy, body.notes, body.date, delta);
       return jsonResponse({ ok: true });
     }
 
     return jsonResponse({ error: "unknown action" });
   } catch (err) {
     return jsonResponse({ error: err.message });
+  }
+}
+
+function upsertCustomer(custSheet, phone, name, allergy, notes, date, delta) {
+  const data = custSheet.getDataRange().getValues();
+  const h    = data[0].map(v => String(v).trim());
+  const ci   = {
+    phone:       h.indexOf("phone"),
+    name:        h.indexOf("name"),
+    allergy:     h.indexOf("allergy"),
+    notes:       h.indexOf("notes"),
+    lastVisit:   h.indexOf("lastVisit"),
+    totalVisits: h.indexOf("totalVisits"),
+  };
+
+  for (let i = 1; i < data.length; i++) {
+    const rowPhone = ci.phone >= 0 ? String(data[i][ci.phone] || "").trim() : "";
+    if (rowPhone !== phone) continue;
+    const r    = custSheet.getRange(i + 1, 1, 1, data[0].length);
+    const vals = r.getValues()[0];
+    if (ci.name    >= 0 && name)    vals[ci.name]    = name;
+    if (ci.allergy >= 0 && allergy) vals[ci.allergy] = allergy;
+    if (ci.notes   >= 0 && notes)   vals[ci.notes]   = notes;
+    if (ci.totalVisits >= 0) vals[ci.totalVisits] = Math.max(0, (parseInt(vals[ci.totalVisits]) || 0) + delta);
+    if (ci.lastVisit >= 0 && date && delta > 0) {
+      const existing = String(vals[ci.lastVisit] || "").trim();
+      if (!existing || date > existing) vals[ci.lastVisit] = date;
+    }
+    r.setValues([vals]);
+    return;
+  }
+
+  if (delta > 0) {
+    const newRow = new Array(data[0].length).fill("");
+    if (ci.phone       >= 0) newRow[ci.phone]       = phone;
+    if (ci.name        >= 0) newRow[ci.name]         = name || "";
+    if (ci.allergy     >= 0) newRow[ci.allergy]      = allergy || "";
+    if (ci.notes       >= 0) newRow[ci.notes]        = notes || "";
+    if (ci.lastVisit   >= 0) newRow[ci.lastVisit]    = date || "";
+    if (ci.totalVisits >= 0) newRow[ci.totalVisits]  = 1;
+    custSheet.appendRow(newRow);
   }
 }
 
