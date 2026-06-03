@@ -1669,6 +1669,7 @@
       const res  = await fetch(API_URL + "?customers=1");
       const data = await res.json();
       _customerList = Array.isArray(data) ? data : [];
+      renderFromCache();
     } catch (e) {
       _customerList = [];
     }
