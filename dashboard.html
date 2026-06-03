@@ -1701,7 +1701,7 @@
   function onPhoneInput(val) {
     const q = val.trim();
     if (!q || q.length < 4) return;
-    const match = _customerList.find(c => c.phone === q || c.phone.includes(q));
+    const match = _customerList.find(c => c.phone === q);
     if (match) autofillCustomer(match);
   }
 
