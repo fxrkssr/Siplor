@@ -6,7 +6,7 @@ const SHEET_NAME = "Form Responses 1";
 
 function doGet(e) {
   const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheets()[0];
+  const sheet = ss.getSheetByName(SHEET_NAME);
 
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return jsonResponse([]);
@@ -20,7 +20,6 @@ function doGet(e) {
   if (!dateParam && !monthParam && !allParam && !cancelledParam && !customersParam) return jsonResponse([]);
 
   if (customersParam) {
-    const ss       = SpreadsheetApp.getActiveSpreadsheet();
     const custSheet = ss.getSheetByName("Customers");
     if (!custSheet) return jsonResponse([]);
     const custData = custSheet.getDataRange().getValues();
@@ -37,7 +36,7 @@ function doGet(e) {
     const result = [];
     for (let i = 1; i < custData.length; i++) {
       const r = custData[i];
-      const phone = ci.phone >= 0 ? String(r[ci.phone] || "").trim() : "";
+      const phone = ci.phone >= 0 ? formatPhone(r[ci.phone]) : "";
       const name  = ci.name  >= 0 ? String(r[ci.name]  || "").trim() : "";
       if (!phone && !name) continue;
       result.push({
@@ -108,7 +107,7 @@ function doPost(e) {
   try {
     const body      = JSON.parse(e.postData.contents);
     const ss        = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet     = ss.getSheets()[0];
+    const sheet     = ss.getSheetByName(SHEET_NAME);
     const data      = sheet.getDataRange().getValues();
     const col       = getColMap(data[0].map(h => String(h).trim()));
     const nCols     = data[0].length;
