@@ -276,6 +276,21 @@ function jsonResponse(data) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// รันครั้งเดียว: สร้าง Customers sheet ใหม่ แล้ว migrate ข้อมูลจาก booking ทันที
+function createAndMigrateCustomers() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let custSheet = ss.getSheetByName("Customers");
+  if (custSheet) {
+    ss.deleteSheet(custSheet);
+  }
+  custSheet = ss.insertSheet("Customers");
+  custSheet.appendRow(["phone", "name", "allergy", "notes", "lastVisit", "totalVisits"]);
+  custSheet.getRange(1, 1, 1, 6).setFontWeight("bold");
+  // format phone column as text to preserve leading 0
+  custSheet.getRange("A:A").setNumberFormat("@");
+  syncAllCustomers();
+}
+
 // รันครั้งเดียวเพื่อ backfill ลูกค้าทุกคนจาก booking sheet → Customers sheet
 function syncAllCustomers() {
   const ss        = SpreadsheetApp.getActiveSpreadsheet();
