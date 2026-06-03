@@ -183,7 +183,12 @@ function doPost(e) {
   }
 }
 
+function isRealPhone(phone) {
+  return phone && phone !== "0" && phone !== "00";
+}
+
 function upsertCustomer(custSheet, phone, name, allergy, notes, date, delta) {
+  if (!isRealPhone(phone)) return;
   const data = custSheet.getDataRange().getValues();
   const h    = data[0].map(v => String(v).trim());
   const ci   = {
@@ -196,7 +201,7 @@ function upsertCustomer(custSheet, phone, name, allergy, notes, date, delta) {
   };
 
   for (let i = 1; i < data.length; i++) {
-    const rowPhone = ci.phone >= 0 ? String(data[i][ci.phone] || "").trim() : "";
+    const rowPhone = ci.phone >= 0 ? formatPhone(data[i][ci.phone]) : "";
     if (rowPhone !== phone) continue;
     const r    = custSheet.getRange(i + 1, 1, 1, data[0].length);
     const vals = r.getValues()[0];
@@ -290,8 +295,8 @@ function syncAllCustomers() {
     if (status === "ยกเลิก") continue;
     const phone   = col.phone >= 0 ? formatPhone(row[col.phone]) : "";
     const name    = col.name  >= 0 ? String(row[col.name]  || "").trim() : "";
-    if (!phone && !name) continue;
-    const key = phone || name;
+    if (!isRealPhone(phone)) continue;
+    const key = phone;
     const rawDate = col.date >= 0 ? row[col.date] : "";
     let dateStr = "";
     if (rawDate instanceof Date) {
@@ -323,7 +328,7 @@ function syncAllCustomers() {
     };
     let found = false;
     for (let i = 1; i < custData.length; i++) {
-      const rowPhone = ci.phone >= 0 ? String(custData[i][ci.phone] || "").trim() : "";
+      const rowPhone = ci.phone >= 0 ? formatPhone(custData[i][ci.phone]) : "";
       if (rowPhone !== c.phone) continue;
       const r    = custSheet.getRange(i + 1, 1, 1, custData[0].length);
       const vals = r.getValues()[0];
