@@ -420,6 +420,7 @@
     .btn-edit            { background: #dbeafe; color: #1d4ed8; }
     .btn-cancel-booking  { background: #fee2e2; color: #b91c1c; }
     .btn-copy            { background: #f3f4f6; color: #374151; }
+    .btn-restore         { background: #dbeafe; color: #1d4ed8; width: auto; padding: 0 10px; gap: 4px; }
 
     .cancelled-tag {
       display: inline-block;
@@ -1254,7 +1255,7 @@
           : `<span class="allergy-tag no-allergy">&#10003; ไม่แพ้อาหาร</span>`);
 
     const mgmtBtns = !authed ? "" : b.cancelled
-      ? `<button class="btn-icon btn-edit" onclick="openBookingForm(${b._row}, true)" title="กู้คืนและย้ายวัน">🔄 กู้คืน</button>`
+      ? `<button class="btn-icon btn-restore" onclick="openBookingForm(${b._row}, true)" title="กู้คืนและย้ายวัน">🔄 กู้คืน</button>`
       : (!isPast(b) ? `
         <button class="btn-icon btn-edit"           onclick="openBookingForm(${b._row})" title="แก้ไข">✏️</button>
         <button class="btn-icon btn-cancel-booking" onclick="openCancelConfirm(${b._row})" title="ยกเลิก">❌</button>
