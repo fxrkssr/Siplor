@@ -20,22 +20,36 @@ function doGet(e) {
   if (!dateParam && !monthParam && !allParam && !cancelledParam && !customersParam) return jsonResponse([]);
 
   if (customersParam) {
-    const headers = data[0].map(h => String(h).trim());
-    const col     = getColMap(headers);
-    const map     = {};
-    for (let i = 1; i < data.length; i++) {
-      const row    = data[i];
-      const status = col.status >= 0 ? String(row[col.status] || "").trim() : "";
-      if (status === "ยกเลิก") continue;
-      const phone = col.phone >= 0 ? formatPhone(row[col.phone]) : "";
-      const name  = col.name  >= 0 ? String(row[col.name] || "").trim() : "";
+    const ss       = SpreadsheetApp.getActiveSpreadsheet();
+    const custSheet = ss.getSheetByName("Customers");
+    if (!custSheet) return jsonResponse([]);
+    const custData = custSheet.getDataRange().getValues();
+    if (custData.length <= 1) return jsonResponse([]);
+    const h = custData[0].map(v => String(v).trim());
+    const ci = {
+      phone:       h.indexOf("phone"),
+      name:        h.indexOf("name"),
+      allergy:     h.indexOf("allergy"),
+      notes:       h.indexOf("notes"),
+      lastVisit:   h.indexOf("lastVisit"),
+      totalVisits: h.indexOf("totalVisits"),
+    };
+    const result = [];
+    for (let i = 1; i < custData.length; i++) {
+      const r = custData[i];
+      const phone = ci.phone >= 0 ? String(r[ci.phone] || "").trim() : "";
+      const name  = ci.name  >= 0 ? String(r[ci.name]  || "").trim() : "";
       if (!phone && !name) continue;
-      const key = phone || name;
-      if (!map[key]) map[key] = { name, phone, totalVisits: 0 };
-      map[key].totalVisits++;
-      if (name) map[key].name = name;
+      result.push({
+        phone,
+        name,
+        allergy:     ci.allergy     >= 0 ? String(r[ci.allergy]     || "").trim() : "",
+        notes:       ci.notes       >= 0 ? String(r[ci.notes]       || "").trim() : "",
+        lastVisit:   ci.lastVisit   >= 0 ? String(r[ci.lastVisit]   || "").trim() : "",
+        totalVisits: ci.totalVisits >= 0 ? (parseInt(r[ci.totalVisits]) || 0)     : 0,
+      });
     }
-    return jsonResponse(Object.values(map).sort((a, b) => b.totalVisits - a.totalVisits));
+    return jsonResponse(result);
   }
 
   const headers = data[0].map(h => String(h).trim());
