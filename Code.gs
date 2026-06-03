@@ -245,7 +245,9 @@ function formatDateTime(val) {
 function formatPhone(val) {
   if (!val && val !== 0) return "";
   if (typeof val === "number") return "0" + Math.round(val);
-  return String(val).trim();
+  const s = String(val).trim();
+  if (/^\d{9}$/.test(s)) return "0" + s;
+  return s;
 }
 
 function formatTime(val) {
