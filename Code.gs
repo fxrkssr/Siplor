@@ -122,6 +122,7 @@ function doPost(e) {
       if (col.notes    >= 0) vals[col.notes]    = body.notes || "";
       if (col.editedBy >= 0) vals[col.editedBy] = body.editedBy || "";
       if (col.editedAt >= 0) vals[col.editedAt] = body.editedAt || "";
+      if (body.restore && col.status >= 0) vals[col.status] = "";
       r.setValues([vals]);
       return jsonResponse({ ok: true });
     }

@@ -879,6 +879,7 @@
   let authed             = false;
   let currentUser        = "";
   let editingRow             = null;
+  let isRestoring            = false;
   let cancelTarget           = null;
   let _allCancelledBookings  = [];
   let _bookingsByRow     = {};
@@ -1252,10 +1253,12 @@
           ? `<span class="allergy-tag not-informed">&#8212; ไม่ได้แจ้ง</span>`
           : `<span class="allergy-tag no-allergy">&#10003; ไม่แพ้อาหาร</span>`);
 
-    const mgmtBtns = (authed && !isPast(b) && !b.cancelled) ? `
+    const mgmtBtns = !authed ? "" : b.cancelled
+      ? `<button class="btn-icon btn-edit" onclick="openBookingForm(${b._row}, true)" title="กู้คืนและย้ายวัน">🔄 กู้คืน</button>`
+      : (!isPast(b) ? `
         <button class="btn-icon btn-edit"           onclick="openBookingForm(${b._row})" title="แก้ไข">✏️</button>
         <button class="btn-icon btn-cancel-booking" onclick="openCancelConfirm(${b._row})" title="ยกเลิก">❌</button>
-        <button class="btn-icon btn-delete"         onclick="openDeleteConfirm(${b._row})" title="ลบ">🗑️</button>` : "";
+        <button class="btn-icon btn-delete"         onclick="openDeleteConfirm(${b._row})" title="ลบ">🗑️</button>` : "");
     const editBtns = `
       <div class="card-actions">
         <button class="btn-icon btn-copy" onclick="copyBookingText(${b._row}, this)" title="คัดลอกข้อความยืนยัน">📋</button>
@@ -1397,10 +1400,16 @@
   }
 
   // ===== BOOKING FORM =====
-  function openBookingForm(row) {
-    const b = row !== null ? (_bookingsByRow[row] ?? _allSearchBookings.find(x => x._row === row) ?? null) : null;
-    editingRow = b ? b._row : null;
-    document.getElementById("form-title").textContent = b ? "แก้ไขการจอง" : "เพิ่มการจอง";
+  function openBookingForm(row, restore = false) {
+    const b = row !== null
+      ? (_bookingsByRow[row]
+         ?? _allSearchBookings.find(x => x._row === row)
+         ?? _allCancelledBookings.find(x => x._row === row)
+         ?? null)
+      : null;
+    editingRow  = b ? b._row : null;
+    isRestoring = restore;
+    document.getElementById("form-title").textContent = restore ? "กู้คืนและย้ายวัน" : (b ? "แก้ไขการจอง" : "เพิ่มการจอง");
     document.getElementById("f-date").value  = b ? b.date  : todayISO();
     document.getElementById("f-name").value  = b ? b.name  : "";
     document.getElementById("f-phone").value = b ? b.phone : "";
@@ -1415,7 +1424,8 @@
 
   function closeBookingForm() {
     document.getElementById("form-overlay").style.display = "none";
-    editingRow = null;
+    editingRow  = null;
+    isRestoring = false;
   }
 
   async function submitBookingForm() {
@@ -1452,6 +1462,7 @@
         allergy: document.getElementById("f-allergy").value,
         notes:   document.getElementById("f-notes").value.trim(),
       };
+      if (isRestoring) payload.restore = true;
       if (editingRow) {
         payload.editedBy = currentUser;
         payload.editedAt = nowBKK;
