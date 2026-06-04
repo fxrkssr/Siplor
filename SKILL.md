@@ -203,7 +203,7 @@ else                → ?date=YYYY-MM-DD (default: วันนี้ BKK)
 - 2 accounts: `const USERS = { "7777@": "แอดมิน 1", "2608@": "แอดมิน 2" }`
 - กดปุ่ม 🔒 → ใส่รหัส → `authed = true` → แสดงปุ่ม ✏️❌🗑️ + ปุ่มเพิ่ม + audit
 - Refresh หน้า = ต้องใส่รหัสใหม่ (ไม่มี persist)
-- ปุ่มแก้ไข/ยกเลิก/ลบ แสดงเฉพาะ `authed && !isPast(b) && !b.cancelled`
+- ปุ่มแก้ไข/ยกเลิก/ลบ แสดงเฉพาะ `authed && !isPast(b) && !b.cancelled` (isPast = วันก่อนหน้าเท่านั้น — วันนี้ยังแก้ได้เสมอ)
 - ปุ่ม 🔄 กู้คืน แสดงเฉพาะ `authed && b.cancelled` — เปิด form กู้คืน+ย้ายวัน
 
 ### Modes
@@ -236,12 +236,10 @@ else                → ?date=YYYY-MM-DD (default: วันนี้ BKK)
 ### isPast(b)
 ```js
 function isPast(b) {
-  const today = todayISO();
-  if (b.date < today) return true;
-  if (b.date > today) return false;
-  return b.time <= nowTimeBKK();
+  return b.date < todayISO();
 }
 ```
+> วันนี้ไม่ถือว่า past — แก้ไขได้ทั้งวันไม่ว่าเวลาจองจะผ่านไปแล้วหรือยัง
 
 ### Allergy Tags
 | ค่า | สี | แสดง |
@@ -351,6 +349,14 @@ function isPast(b) {
 - `isRealPhone()` skip phone `""/"0"/"00"` ไม่เขียนลง Customers
 - `appendRow()` ไม่ inherit column format → ต้อง `setNumberFormat("@").setValue(phone)` หลัง append ทุกครั้ง
 - migration: `createAndMigrateCustomers()` สร้าง sheet + backfill ครั้งเดียว; ต้องใช้ `SHEET_NAME` ไม่ใช่ `getSheets()[0]`
+
+### ปุ่มลบไม่มี CSS background (fixed 2026-06-04)
+- **Bug:** `.btn-delete` ไม่มี style → ปุ่ม 🗑️ แสดงโดยไม่มี background
+- **Fix:** เพิ่ม `.btn-delete { background: #fee2e2; color: #b91c1c; }` ใน CSS
+
+### edit วันนี้ไม่ได้หลังเวลาผ่านไปแล้ว (fixed 2026-06-04)
+- **Bug:** `isPast()` คืน true ถ้า `b.date === today && b.time <= nowTimeBKK()` → ปุ่ม edit/cancel/delete หายไป
+- **Fix:** เปลี่ยน `isPast()` ให้เปรียบเทียบแค่วันที่ — วันนี้ไม่ถือว่า past ทั้งวัน
 
 ### form-overlay ปิดตอนแตะขอบบนมือถือ (fixed 2026-06-01)
 - **Bug:** กรอกข้อมูลจองบนมือถือแล้วแตะขอบนอก modal → form ปิดทันที ข้อมูลที่พิมพ์หายหมด
