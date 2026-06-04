@@ -926,10 +926,7 @@
   }
 
   function isPast(b) {
-    const today = todayISO();
-    if (b.date < today) return true;
-    if (b.date > today) return false;
-    return b.time <= nowTimeBKK();
+    return b.date < todayISO();
   }
 
   function formatDateTH(iso) {
