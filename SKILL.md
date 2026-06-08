@@ -358,6 +358,11 @@ function isPast(b) {
 - **Bug:** `isPast()` คืน true ถ้า `b.date === today && b.time <= nowTimeBKK()` → ปุ่ม edit/cancel/delete หายไป
 - **Fix:** เปลี่ยน `isPast()` ให้เปรียบเทียบแค่วันที่ — วันนี้ไม่ถือว่า past ทั้งวัน
 
+### calendar click-to-navigate (added 2026-06-08)
+- กดวันใน tab "ดูคิวว่าง" → ข้ามไปหน้า รายวัน วันนั้นทันที
+- `renderQueueCalendar()` เพิ่ม `onclick="navigateToDay('${dateStr}')"` + `cursor:pointer` บน cell ที่ไม่ใช่วันอังคาร
+- `navigateToDay(dateStr)` → `fp.setDate(dateStr, false)` (ไม่ trigger onChange) แล้ว `setMode('day')` ซึ่ง call `loadBookings()` ครั้งเดียว
+
 ### form-overlay ปิดตอนแตะขอบบนมือถือ (fixed 2026-06-01)
 - **Bug:** กรอกข้อมูลจองบนมือถือแล้วแตะขอบนอก modal → form ปิดทันที ข้อมูลที่พิมพ์หายหมด
 - **สาเหตุ:** `form-overlay` มี `onclick="if(event.target===this)closeBookingForm()"` — แตะ overlay พื้นหลัง = ปิด form
