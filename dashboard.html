@@ -1615,7 +1615,8 @@
       }
 
       const extra = (isPast ? ' queue-past' : '') + (isToday ? ' queue-today' : '');
-      html += `<div class="queue-cell${extra}">
+      const clickAttr = !isTue ? ` onclick="navigateToDay('${dateStr}')" style="cursor:pointer"` : '';
+      html += `<div class="queue-cell${extra}"${clickAttr}>
         <div class="queue-date">${day}</div>
         <div class="${cls}">${txt}</div>
       </div>`;
@@ -1623,6 +1624,11 @@
 
     html += `</div>`;
     return html;
+  }
+
+  function navigateToDay(dateStr) {
+    fp.setDate(dateStr, false);
+    setMode('day');
   }
 
   // ===== COPY =====
