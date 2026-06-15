@@ -60,8 +60,8 @@ npx wrangler deploy
 
 | ชั้น | เครื่องมือ | หน้าที่ |
 |---|---|---|
-| Input | Google Forms | แอดมินกรอกข้อมูลการจอง |
-| DB | Google Sheets | เก็บข้อมูลการจอง |
+| Input | **dashboard.html (เว็บ)** | แอดมินกรอก/แก้/ยกเลิก/ลบ การจอง — ทางเข้าข้อมูลเดียวที่ใช้จริง |
+| DB | Google Sheets | เก็บข้อมูลการจอง (sheet ชื่อ `"Form Responses 1"`) |
 | API | Google Apps Script | doGet / doPost อ่าน-เขียน Sheets |
 | Proxy | Cloudflare Worker | CORS proxy, forward GET/POST |
 | Frontend | dashboard.html → Vercel | หน้าเว็บพนักงาน |
@@ -70,22 +70,25 @@ npx wrangler deploy
 **ทำไมต้องมี Cloudflare Worker?**
 Browser เรียก Apps Script URL ตรงๆ ไม่ได้เพราะ CORS — Worker inject header `Access-Control-Allow-Origin: *` ให้
 
+> ⚠️ **เลิกใช้ Google Form แล้ว (ตั้งแต่ 2026-06-15)**
+> โปรเจกต์เริ่มจาก Google Form เป็นทางเข้าข้อมูล (ชื่อ sheet `"Form Responses 1"` คือร่องรอยจากยุคนั้น) **แต่ตอนนี้จองผ่านหน้าเว็บอย่างเดียว 100%**
+> - การจองทุกรายการมาจาก dashboard → Worker → `doPost`
+> - `createBookingForm()` / `setupTuesdayBlock()` / `blockTuesdayBookings()` ใน Code.gs = ฟังก์ชันยุค Form **ไม่ได้ใช้แล้ว** (เก็บไว้เฉยๆ ไม่ต้องรัน ไม่ต้องลบ)
+> - ฟีเจอร์ "ช่องทางการจอง" จึงอยู่ในฟอร์มเว็บเท่านั้น — **ไม่ต้องไปแตะ Google Form**
+> - การบล็อกวันอังคารใช้ validation ในฟอร์มเว็บ (`submitBookingForm`) แทน trigger `blockTuesdayBookings` (ซึ่งจะทำงานก็ต่อเมื่อมีคนจองผ่าน Form เท่านั้น = ไม่เกิดขึ้นแล้ว)
+
 ---
 
 ## Data Flow
 
 ```
-แอดมินกรอก Google Form
-  → Google Sheets (บันทึกอัตโนมัติ)
-  → Apps Script doGet (อ่านข้อมูล JSON)
-  → Cloudflare Worker (CORS proxy)
-  → Dashboard บน Vercel
-
-กรอก/แก้ไข/ยกเลิก/ลบจากเว็บ
-  → Cloudflare Worker (forward POST)
-  → Apps Script doPost
-  → Google Sheets (เขียนข้อมูล)
+แอดมินกรอก/แก้ไข/ยกเลิก/ลบ จากหน้าเว็บ (dashboard.html)
+  → Cloudflare Worker (forward POST → doPost / forward GET → doGet)
+  → Apps Script (เขียน/อ่าน Google Sheets)
+  → ส่ง JSON กลับ → Worker (CORS) → Dashboard แสดงผล
 ```
+
+> ทางเข้าข้อมูลทั้งหมดผ่านหน้าเว็บ — ไม่มี Google Form อีกต่อไป
 
 ---
 
@@ -167,9 +170,10 @@ Column header ที่ต้องมีใน Sheet (ชื่อใช้ map
 - `syncAllCustomers()` — backfill Customers sheet จาก booking ทั้งหมด (รันเองจาก Apps Script)
 - `createAndMigrateCustomers()` — สร้าง Customers sheet ใหม่ + migrate (รันครั้งเดียว)
 
-### Trigger
+### Trigger (DEPRECATED — ยุค Google Form, ไม่ใช้แล้ว)
 - `setupTuesdayBlock()` — รันครั้งเดียวเพื่อติดตั้ง onFormSubmit trigger
 - `blockTuesdayBookings()` — ลบ row อัตโนมัติถ้าจองวันอังคาร
+- ⚠️ ทำงานเฉพาะตอนจองผ่าน **Google Form** ซึ่งเลิกใช้แล้ว → การบล็อกวันอังคารตอนนี้พึ่ง validation ใน `submitBookingForm()` ฝั่งเว็บแทน
 
 ---
 
@@ -209,13 +213,13 @@ else                → ?date=YYYY-MM-DD (default: วันนี้ BKK)
 - ปุ่ม 🔄 กู้คืน แสดงเฉพาะ `authed && b.cancelled` — เปิด form กู้คืน+ย้ายวัน
 
 ### Modes
-- **รายวัน (day)** — เลือกวันที่ด้วย Flatpickr, ปุ่ม ⊞ toggle compact
+- **รายวัน (day)** — เลือกวันที่ด้วย Flatpickr, ปุ่ม ⊞ toggle compact, **ปุ่ม 📥 export CSV** (`exportDayCSV()` — ดูได้ไม่ต้อง login)
 - **รายเดือน (month)** — มี 5 sub-tab:
   - 📌 ยังไม่ได้มา — `!isPast(b)`
   - ✅ ใช้บริการแล้ว — `isPast(b)`
   - 📋 ทั้งหมด — ทุก booking (ยกเว้นที่ยกเลิก)
-  - ❌ ยกเลิก — fetch `?cancelled=1&month=` แยก → `_allCancelledBookings`
-  - ดูคิวว่าง — แสดง calendar grid รายเดือน ไม่ fetch เพิ่ม ใช้ข้อมูลจาก `_allBookings` / capacity MAX=15/วัน / สีเขียว ≤10, ส้ม 11-14, แดง ≥15 / วันอังคาร = "ปิด"
+  - ❌ ยกเลิก — fetch `?cancelled=1&month=` แยก → `_allCancelledBookings` + **chip filter ตามเหตุผล** (`cancelReasonFilter`)
+  - ดูคิวว่าง — calendar grid รายเดือน (คลิกวันเพื่อไป day mode), capacity MAX=15/วัน / เขียว ≤10, ส้ม 11-14, แดง ≥15 / อังคาร = "ปิด"
 
 ### State Variables (สำคัญมาก)
 
@@ -231,6 +235,7 @@ else                → ?date=YYYY-MM-DD (default: วันนี้ BKK)
 | `editingRow` | `_row` ที่กำลัง edit (null = add ใหม่) | `closeBookingForm()` |
 | `isRestoring` | true = เปิด form จาก cancelled booking (กู้คืน) | `closeBookingForm()` |
 | `cancelTarget` | `_row` ที่กำลังจะยกเลิก | `closeCancelConfirm()` |
+| `cancelReasonFilter` | เหตุผลที่เลือก filter ใน tab ❌ (`""` = ทุกเหตุผล) | `setMonthTab()` |
 | `_customerList` | customer list จาก Customers sheet | `loadCustomers()` |
 
 > ⚠️ **`_bookingsByRow` reset ทุกครั้งที่ `loadBookings()` รัน** — lookup จาก `_row` ต้อง fallback ไปหาใน `_allSearchBookings` ด้วยเสมอ
@@ -299,12 +304,14 @@ function isPast(b) {
 
 | action | ผลใน Sheets | ผลใน Customers sheet | มองเห็นใน dashboard |
 |---|---|---|---|
-| **ยกเลิก (❌)** | เขียน `"ยกเลิก"` + cancelledBy/At | totalVisits -1 | ซ่อนจาก normal view, ดูได้ใน tab ❌ ยกเลิก |
+| **ยกเลิก (❌)** | เขียน `"ยกเลิก"` + cancelledBy/At + **cancelReason (col P)** | totalVisits -1 | ซ่อนจาก normal view, ดูได้ใน tab ❌ ยกเลิก |
 | **ลบ (🗑️)** | ลบ row ถาวร | totalVisits -1 (ถ้าไม่ใช่ cancelled) | หายไปเลย |
-| **กู้คืน (🔄)** | clear สถานะ/cancelledBy/At + แก้วันที่ | totalVisits +1 | กลับมาใน normal view |
+| **กู้คืน (🔄)** | clear สถานะ/cancelledBy/At + **cancelReason** + แก้วันที่ | totalVisits +1 | กลับมาใน normal view |
 
 - ยกเลิก/ลบ แสดงเฉพาะ `authed && !isPast(b) && !b.cancelled`
 - กู้คืน แสดงเฉพาะ `authed && b.cancelled`
+- ยกเลิก = **ต้องเลือกเหตุผลก่อน** (`f-cancel-reason` required ใน `confirmCancel()`)
+- tab ❌ ยกเลิก: เลือกดูตามเหตุผลได้ด้วย chip filter (`renderReasonFilter()` / `cancelReasonFilter`)
 - `openBookingForm(row, restore=true)` — lookup จาก `_bookingsByRow ?? _allSearchBookings ?? _allCancelledBookings`
 
 ---
@@ -313,7 +320,9 @@ function isPast(b) {
 
 - `_row` index ใช้ตอน load หน้า — ถ้ามีคนลบ row พร้อมกัน อาจ edit ผิด row (edge case, low risk)
 - ไม่มี auth ที่ API level — ใครรู้ Worker URL ก็ POST ได้ (acceptable สำหรับ internal tool)
-- วันอังคารบล็อก 2 ชั้น: trigger ใน Apps Script (form) + validation ใน dashboard (web form)
+- วันอังคารบล็อก: ปัจจุบันใช้ validation ใน dashboard (`submitBookingForm`) เป็นหลัก — trigger `blockTuesdayBookings` (ยุค Form) ตายแล้วเพราะเลิกใช้ Form
+- **ทางเข้าข้อมูลเดียว = หน้าเว็บ** (ไม่มี Google Form แล้ว — ดู Tech Stack)
+- **ช่องทางการจอง + เหตุผลยกเลิก = required** ทั้งคู่ ตั้งแต่ 2026-06-15
 
 ### _bookingsByRow reset bug (fixed 2026-05-29)
 - **Bug:** กดแก้ไขจากหน้า search แล้ว form เปิดว่าง
@@ -365,9 +374,13 @@ function isPast(b) {
 - **ช่องทางจอง (col Q):** booking form มี `<select id="f-channel">` (Meta/Call/Line) — **บังคับเลือก** → add/edit ส่ง `channel` → Code.gs เขียน col Q; แสดง `.channel-badge` ม่วง ใต้เบอร์บน card
 - **tab ❌ ยกเลิก มี reason filter:** chip row (`renderReasonFilter()` + `setCancelReasonFilter()`) filter `_allCancelledBookings` ตาม `cancelReasonFilter`; reset ใน `setMonthTab()`; เหตุผลแสดงต่อท้าย cancelled-tag
 - **Export CSV (ทีมเชฟ):** ปุ่ม 📥 ใน day-nav (ซ่อนอัตโนมัติใน month mode) → `exportDayCSV()` gen CSV จาก `_allBookings` คอลัมน์ เวลา/ชื่อ/เบอร์/จำนวนคน/แพ้อาหาร/หมายเหตุ เรียงตามเวลา + UTF-8 BOM กันภาษาไทยเพี้ยน → `siplor-YYYY-MM-DD.csv`
-- **constants:** `CHANNELS`, `CANCEL_REASONS` ที่หัว `<script>`
+- **constants:** `CHANNELS` (Meta/Call/Line), `CANCEL_REASONS` (จองซ้ำ/ยกเลิกในวัน/ยกเลิกล่วงหน้า/no show) ที่หัว `<script>` — แก้ที่นี่ที่เดียวถ้าจะเพิ่ม/ลดตัวเลือก (แต่ต้องอัปเดต `<option>` ใน HTML modal ทั้ง 2 ที่ด้วย เพราะ option เป็น static)
+- **state ใหม่:** `cancelReasonFilter` (`""` = ทุกเหตุผล) — reset ใน `setMonthTab()`
+- **CSV detail:** ใช้ `_allBookings` (day mode = วันนั้น, ไม่รวม cancelled, เรียงเวลาจาก Code.gs แล้ว), escape comma/quote/newline, prepend BOM `﻿`
+- ✅ **ยืนยันทำงานครบทั้ง 4 ฟีเจอร์แล้ว (2026-06-15):** add channel เขียน col Q, cancel reason เขียน col P, reason filter ใน tab ❌, CSV เปิด Excel ภาษาไทยไม่เพี้ยน
 - ⚠️ worker.js **ไม่ต้องแก้** — forward body/response ผ่าน field ใหม่อัตโนมัติ
-- ⚠️ ต้องเพิ่ม col P/Q ใน Sheet + redeploy Code.gs + เพิ่ม field "ช่องทางการจอง" ใน Google Form (manual)
+- ⚠️ **manual ที่ทำไปแล้ว:** เพิ่ม col P=`เหตุผลยกเลิก`, Q=`ช่องทางการจอง` ใน Sheet + redeploy Code.gs (New version)
+- ❌ **ไม่ต้องแตะ Google Form** — เลิกใช้แล้ว (ดู Tech Stack)
 
 ### calendar click-to-navigate (added 2026-06-08)
 - กดวันใน tab "ดูคิวว่าง" → ข้ามไปหน้า รายวัน วันนั้นทันที
