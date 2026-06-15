@@ -433,6 +433,33 @@
       margin-top: 4px;
     }
 
+    .channel-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 6px;
+      background: #ede9fe;
+      color: #6d28d9;
+      border: 1px solid #ddd6fe;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    /* Cancel-reason filter chips */
+    .reason-filter { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .reason-chip {
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .reason-chip.active { background: var(--danger); border-color: var(--danger); color: #fff; }
+
     /* ===== FABs ===== */
     .add-fab {
       position: fixed;
@@ -724,6 +751,7 @@
       <button class="nav-btn" onclick="shiftDate(1)">&#8250;</button>
       <button class="today-btn" onclick="goToday()">วันนี้</button>
       <button class="nav-btn compact-btn" id="compact-btn" onclick="toggleCompact()" title="แสดง 2 คอลัมน์">⊞</button>
+      <button class="nav-btn" id="export-btn" onclick="exportDayCSV()" title="ดาวน์โหลด Excel (CSV) สำหรับทีมเชฟ">📥</button>
     </div>
 
     <div class="month-nav" id="month-nav" style="display:none">
@@ -807,6 +835,15 @@
       </div>
     </div>
     <div class="field-group">
+      <label class="field-label">ช่องทางการจอง</label>
+      <select id="f-channel" class="field-select">
+        <option value="">— เลือกช่องทาง —</option>
+        <option>Meta</option>
+        <option>Call</option>
+        <option>Line</option>
+      </select>
+    </div>
+    <div class="field-group">
       <label class="field-label">จำนวนลูกค้า</label>
       <select id="f-count" class="field-select">
         <option>1</option><option>2</option><option>3</option><option>4</option>
@@ -855,6 +892,16 @@
   <div class="modal">
     <div class="modal-title">ยกเลิกการจอง</div>
     <p id="cancel-desc" style="font-size:15px;color:var(--muted);margin-bottom:8px;"></p>
+    <div class="field-group">
+      <label class="field-label">เหตุผลการยกเลิก</label>
+      <select id="f-cancel-reason" class="field-select">
+        <option value="">— เลือกเหตุผล —</option>
+        <option>จองซ้ำ</option>
+        <option>ยกเลิกในวัน</option>
+        <option>ยกเลิกล่วงหน้า</option>
+        <option>no show</option>
+      </select>
+    </div>
     <div class="modal-actions">
       <button onclick="closeCancelConfirm()" class="btn-cancel">ปิด</button>
       <button onclick="confirmCancel()" class="btn-danger" id="cancel-btn">ยืนยันยกเลิก</button>
@@ -874,6 +921,8 @@
     "17:00","17:30","18:00","18:30","19:00","19:30",
     "20:00","20:30","21:00","21:30","22:00"
   ];
+  const CHANNELS       = ["Meta", "Call", "Line"];
+  const CANCEL_REASONS = ["จองซ้ำ", "ยกเลิกในวัน", "ยกเลิกล่วงหน้า", "no show"];
 
   let mode               = "day";
   let currentMonth       = "";
@@ -889,6 +938,7 @@
   let isRestoring            = false;
   let cancelTarget           = null;
   let _allCancelledBookings  = [];
+  let cancelReasonFilter     = "";   // "" = ทุกเหตุผล
   let _bookingsByRow     = {};
   let _customerList      = [];   // ← NEW: customer cache
   let _acFocusIdx        = -1;   // ← NEW: keyboard nav index
@@ -1021,6 +1071,7 @@
 
   function setMonthTab(tab) {
     monthTab = tab;
+    cancelReasonFilter = "";
     ["upcoming","visited","all","cancelled","queue"].forEach(t =>
       document.getElementById(`subtab-${t}`).classList.toggle("active", t === tab)
     );
@@ -1089,14 +1140,17 @@
       return;
     }
 
-    // Cancelled tab — data มาจาก _allCancelledBookings แยก
+    // Cancelled tab — data มาจาก _allCancelledBookings แยก + filter ตามเหตุผล
     if (!searchQuery && mode === "month" && monthTab === "cancelled") {
-      const total = _allCancelledBookings.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
+      const byReason = cancelReasonFilter
+        ? _allCancelledBookings.filter(b => (b.cancelReason || "") === cancelReasonFilter)
+        : _allCancelledBookings;
+      const total = byReason.reduce((s, b) => s + (parseInt(b.count) || 0), 0);
       document.getElementById("total-count").textContent = total;
       label.textContent = formatMonthTH(currentMonth);
-      list.innerHTML = _allCancelledBookings.length === 0
+      list.innerHTML = renderReasonFilter() + (byReason.length === 0
         ? renderEmptyCancelled()
-        : renderMonthGroups(_allCancelledBookings);
+        : renderMonthGroups(byReason));
       return;
     }
 
@@ -1280,7 +1334,10 @@
       ? `<div class="audit-info">${auditParts.map(p => `<span>${p}</span>`).join("")}</div>` : "";
 
     const cancelledTag = b.cancelled
-      ? `<span class="cancelled-tag">❌ ยกเลิกแล้ว</span>` : "";
+      ? `<span class="cancelled-tag">❌ ยกเลิกแล้ว${b.cancelReason ? " · " + escHtml(b.cancelReason) : ""}</span>` : "";
+
+    const channelBadge = b.channel
+      ? `<span class="channel-badge">${escHtml(b.channel)}</span>` : "";
 
     const cust = _customerList.find(c => c.phone === b.phone);
     const visitBadge = (cust && cust.totalVisits >= 1)
@@ -1307,7 +1364,7 @@
         <div class="info-col">
           ${dateTag}
           <div class="guest-name">${escHtml(b.name)}${visitBadge}</div>
-          <div class="guest-phone">${escHtml(b.phone)}</div>
+          <div class="guest-phone">${escHtml(b.phone)}${channelBadge}</div>
           ${allergyTag}
           ${cancelledTag}
           ${b.notes ? `<div class="notes-text">📝 ${escHtml(b.notes)}</div>` : ""}
@@ -1421,6 +1478,7 @@
     document.getElementById("f-notes").value = b ? (b.notes || "") : "";
     document.getElementById("f-time").value    = b ? b.time    : TIMES[0];
     document.getElementById("f-count").value   = b ? b.count   : "2";
+    document.getElementById("f-channel").value = b ? (b.channel || "") : "";
     document.getElementById("f-allergy").value = b ? b.allergy : "ไม่แพ้";
     document.getElementById("returning-badge").style.display = "none";
     closeAC();
@@ -1435,12 +1493,18 @@
 
   async function submitBookingForm() {
     const btn   = document.getElementById("form-submit-btn");
-    const date  = document.getElementById("f-date").value;
-    const name  = document.getElementById("f-name").value.trim();
-    const phone = document.getElementById("f-phone").value.trim();
+    const date    = document.getElementById("f-date").value;
+    const name    = document.getElementById("f-name").value.trim();
+    const phone   = document.getElementById("f-phone").value.trim();
+    const channel = document.getElementById("f-channel").value;
 
     if (!date || !name || !phone) {
       alert("กรุณากรอกวันที่ ชื่อ และเบอร์โทรให้ครบ");
+      return;
+    }
+
+    if (!channel) {
+      alert("กรุณาเลือกช่องทางการจอง");
       return;
     }
 
@@ -1464,6 +1528,7 @@
         name,
         phone,
         count:   document.getElementById("f-count").value,
+        channel,
         allergy: document.getElementById("f-allergy").value,
         notes:   document.getElementById("f-notes").value.trim(),
       };
@@ -1530,6 +1595,7 @@
     cancelTarget = row;
     document.getElementById("cancel-desc").textContent =
       `ยืนยันยกเลิกการจองของ "${b ? b.name : ""}"?`;
+    document.getElementById("f-cancel-reason").value = "";
     document.getElementById("cancel-overlay").style.display = "flex";
   }
 
@@ -1540,13 +1606,18 @@
 
   async function confirmCancel() {
     if (cancelTarget === null) return;
+    const reason = document.getElementById("f-cancel-reason").value;
+    if (!reason) {
+      alert("กรุณาเลือกเหตุผลการยกเลิก");
+      return;
+    }
     const btn = document.getElementById("cancel-btn");
     btn.disabled = true;
     btn.textContent = "กำลังบันทึก...";
     try {
       const nowBKK = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Bangkok" })
                                 .replace("T", " ").substring(0, 16);
-      const res = await apiPost({ action: "cancel", _row: cancelTarget, cancelledBy: currentUser, cancelledAt: nowBKK });
+      const res = await apiPost({ action: "cancel", _row: cancelTarget, cancelledBy: currentUser, cancelledAt: nowBKK, cancelReason: reason });
       if (res.ok) {
         closeCancelConfirm();
         loadBookings(true);
@@ -1561,6 +1632,37 @@
     }
   }
 
+  // ===== EXPORT CSV (สำหรับทีมเชฟ print) =====
+  function exportDayCSV() {
+    if (mode !== "day") { alert("เปลี่ยนไปโหมด รายวัน ก่อน export"); return; }
+    const date = document.getElementById("date-picker").value;
+    const rows = _allBookings
+      .filter(b => !b.cancelled)
+      .slice()
+      .sort((a, b) => a.time.localeCompare(b.time));
+
+    if (rows.length === 0) { alert("ไม่มีการจองในวันนี้"); return; }
+
+    const csvCell = v => {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ["เวลา", "ชื่อ", "เบอร์", "จำนวนคน", "แพ้อาหาร", "หมายเหตุ"];
+    const lines  = [header.join(",")];
+    rows.forEach(b => {
+      lines.push([b.time, b.name, b.phone, b.count, b.allergy, b.notes].map(csvCell).join(","));
+    });
+
+    const csv  = "﻿" + lines.join("\r\n");   // BOM กัน Excel อ่านภาษาไทยเพี้ยน
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url;
+    a.download = `siplor-${date}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   // ===== API =====
   async function apiPost(body) {
     const res = await fetch(API_URL, {
@@ -1569,6 +1671,23 @@
       body:    JSON.stringify(body),
     });
     return res.json();
+  }
+
+  // ===== CANCEL-REASON FILTER =====
+  function renderReasonFilter() {
+    const countBy = r => _allCancelledBookings.filter(b => (b.cancelReason || "") === r).length;
+    let html = `<div class="reason-filter">`;
+    html += `<div class="reason-chip${cancelReasonFilter === "" ? " active" : ""}" onclick="setCancelReasonFilter('')">ทั้งหมด (${_allCancelledBookings.length})</div>`;
+    CANCEL_REASONS.forEach(r => {
+      html += `<div class="reason-chip${cancelReasonFilter === r ? " active" : ""}" onclick="setCancelReasonFilter('${r}')">${r} (${countBy(r)})</div>`;
+    });
+    html += `</div>`;
+    return html;
+  }
+
+  function setCancelReasonFilter(r) {
+    cancelReasonFilter = r;
+    renderFromCache();
   }
 
   // ===== QUEUE CALENDAR =====

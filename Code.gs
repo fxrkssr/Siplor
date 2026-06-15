@@ -95,6 +95,8 @@ function doGet(e) {
       editedAt:      col.editedAt     >= 0 ? formatDateTime(row[col.editedAt])       : "",
       cancelledBy:   col.cancelledBy  >= 0 ? String(row[col.cancelledBy] || "").trim() : "",
       cancelledAt:   col.cancelledAt  >= 0 ? formatDateTime(row[col.cancelledAt])    : "",
+      cancelReason:  col.cancelReason >= 0 ? String(row[col.cancelReason] || "").trim() : "",
+      channel:       col.channel      >= 0 ? String(row[col.channel]     || "").trim() : "",
       cancelled:     isCancelled,
     });
   }
@@ -123,6 +125,7 @@ function doPost(e) {
       if (col.count   >= 0) newRow[col.count]    = body.count;
       if (col.allergy  >= 0) newRow[col.allergy]  = body.allergy;
       if (col.notes    >= 0) newRow[col.notes]    = body.notes || "";
+      if (col.channel  >= 0) newRow[col.channel]  = body.channel || "";
       if (col.addedBy  >= 0) newRow[col.addedBy]  = body.addedBy  || "";
       if (col.addedAt  >= 0) newRow[col.addedAt]  = body.addedAt  || "";
       sheet.appendRow(newRow);
@@ -150,6 +153,7 @@ function doPost(e) {
       vals[col.status] = "ยกเลิก";
       if (col.cancelledBy >= 0) vals[col.cancelledBy] = body.cancelledBy || "";
       if (col.cancelledAt >= 0) vals[col.cancelledAt] = body.cancelledAt || "";
+      if (col.cancelReason >= 0) vals[col.cancelReason] = body.cancelReason || "";
       r.setValues([vals]);
       if (custSheet && phone) upsertCustomer(custSheet, phone, "", "", "", "", -1);
       return jsonResponse({ ok: true });
@@ -165,11 +169,13 @@ function doPost(e) {
       if (col.count   >= 0) vals[col.count]    = body.count;
       if (col.allergy  >= 0) vals[col.allergy]  = body.allergy;
       if (col.notes    >= 0) vals[col.notes]    = body.notes || "";
+      if (col.channel  >= 0 && body.channel) vals[col.channel] = body.channel;
       if (col.editedBy >= 0) vals[col.editedBy] = body.editedBy || "";
       if (col.editedAt >= 0) vals[col.editedAt] = body.editedAt || "";
-      if (body.restore && col.status >= 0)      vals[col.status]      = "";
-      if (body.restore && col.cancelledBy >= 0) vals[col.cancelledBy] = "";
-      if (body.restore && col.cancelledAt >= 0) vals[col.cancelledAt] = "";
+      if (body.restore && col.status >= 0)       vals[col.status]       = "";
+      if (body.restore && col.cancelledBy >= 0)  vals[col.cancelledBy]  = "";
+      if (body.restore && col.cancelledAt >= 0)  vals[col.cancelledAt]  = "";
+      if (body.restore && col.cancelReason >= 0) vals[col.cancelReason] = "";
       r.setValues([vals]);
       const delta = body.restore ? 1 : 0;
       if (custSheet && body.phone) upsertCustomer(custSheet, body.phone, body.name, body.allergy, body.notes, body.date, delta);
@@ -273,6 +279,8 @@ function getColMap(headers) {
     status:       headers.findIndex(h => h === "สถานะ"),
     cancelledBy:  headers.findIndex(h => h === "ยกเลิกโดย"),
     cancelledAt:  headers.findIndex(h => h === "ยกเลิกเมื่อ"),
+    cancelReason: headers.findIndex(h => h === "เหตุผลยกเลิก"),
+    channel:      headers.findIndex(h => h === "ช่องทางการจอง"),
   };
 }
 
@@ -442,6 +450,9 @@ function createBookingForm() {
   form.addTextItem().setTitle("เบอร์โทรศัพท์").setRequired(true);
   form.addListItem().setTitle("จำนวนลูกค้า (คน)")
     .setChoiceValues(["1","2","3","4","5","6","7","8","9","10","10+"])
+    .setRequired(true);
+  form.addListItem().setTitle("ช่องทางการจอง")
+    .setChoiceValues(["Meta","Call","Line"])
     .setRequired(true);
   form.addListItem().setTitle("ข้อมูลแพ้อาหาร")
     .setChoiceValues(["ไม่แพ้","ไม่ได้แจ้ง","อาหารทะเล","ถั่ว","นม","กลูเตน","อื่นๆ (ระบุในหมายเหตุ)"])

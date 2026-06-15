@@ -112,6 +112,8 @@ Column header ที่ต้องมีใน Sheet (ชื่อใช้ map
 | M | สถานะ | `"ยกเลิก"` = ถูกยกเลิก, ว่าง = ปกติ |
 | N | ยกเลิกโดย | audit — บันทึกตอน cancel |
 | O | ยกเลิกเมื่อ | audit — บันทึกตอน cancel |
+| P | เหตุผลยกเลิก | จองซ้ำ / ยกเลิกในวัน / ยกเลิกล่วงหน้า / no show — บันทึกตอน cancel |
+| Q | ช่องทางการจอง | Meta / Call / Line — บันทึกตอน add/edit |
 
 **Sheet Customers** — ข้อมูลลูกค้า (เบอร์ unique key)
 
@@ -144,15 +146,15 @@ Column header ที่ต้องมีใน Sheet (ชื่อใช้ map
 | `?cancelled=1&month=YYYY-MM` | ดึงเฉพาะที่ยกเลิก ของเดือนนั้น |
 | `?customers=1` | ดึงข้อมูลลูกค้าทั้งหมดจาก Customers sheet |
 
-- แต่ละ booking return field: `_row`, `date`, `time`, `name`, `phone`, `count`, `allergy`, `hasAllergy`, `notes`, `addedBy`, `addedAt`, `editedBy`, `editedAt`, `cancelledBy`, `cancelledAt`, `cancelled`
+- แต่ละ booking return field: `_row`, `date`, `time`, `name`, `phone`, `count`, `allergy`, `hasAllergy`, `notes`, `addedBy`, `addedAt`, `editedBy`, `editedAt`, `cancelledBy`, `cancelledAt`, `cancelReason`, `channel`, `cancelled`
 - `_row` = row index ใน Sheets (1-based) — ใช้สำหรับ edit/cancel/delete
 
 ### doPost — actions ที่รับได้
 | action | หน้าที่ |
 |---|---|
-| `"add"` | เพิ่ม row ใหม่ + upsert Customers sheet |
-| `"edit"` | แก้ข้อมูล; ถ้า `body.restore=true` → clear สถานะ/cancelledBy/At + upsert Customers (+1) |
-| `"cancel"` | เขียน `"ยกเลิก"` + cancelledBy/At ลง column N/O — upsert Customers (-1) |
+| `"add"` | เพิ่ม row ใหม่ (+ `channel` col Q) + upsert Customers sheet |
+| `"edit"` | แก้ข้อมูล (+ `channel`); ถ้า `body.restore=true` → clear สถานะ/cancelledBy/At/cancelReason + upsert Customers (+1) |
+| `"cancel"` | เขียน `"ยกเลิก"` + cancelledBy/At + `cancelReason` ลง column N/O/P — upsert Customers (-1) |
 | `"delete"` | ลบ row ถาวร + upsert Customers (-1) ถ้า booking ไม่ใช่ cancelled |
 
 ### Helper Functions
@@ -357,6 +359,15 @@ function isPast(b) {
 ### edit วันนี้ไม่ได้หลังเวลาผ่านไปแล้ว (fixed 2026-06-04)
 - **Bug:** `isPast()` คืน true ถ้า `b.date === today && b.time <= nowTimeBKK()` → ปุ่ม edit/cancel/delete หายไป
 - **Fix:** เปลี่ยน `isPast()` ให้เปรียบเทียบแค่วันที่ — วันนี้ไม่ถือว่า past ทั้งวัน
+
+### เหตุผลยกเลิก + ช่องทางจอง + export CSV (added 2026-06-15)
+- **เหตุผลยกเลิก (col P):** cancel modal มี `<select id="f-cancel-reason">` (จองซ้ำ/ยกเลิกในวัน/ยกเลิกล่วงหน้า/no show) — **บังคับเลือก** → `confirmCancel()` ส่ง `cancelReason` → Code.gs เขียน col P; restore เคลียร์ค่า
+- **ช่องทางจอง (col Q):** booking form มี `<select id="f-channel">` (Meta/Call/Line) — **บังคับเลือก** → add/edit ส่ง `channel` → Code.gs เขียน col Q; แสดง `.channel-badge` ม่วง ใต้เบอร์บน card
+- **tab ❌ ยกเลิก มี reason filter:** chip row (`renderReasonFilter()` + `setCancelReasonFilter()`) filter `_allCancelledBookings` ตาม `cancelReasonFilter`; reset ใน `setMonthTab()`; เหตุผลแสดงต่อท้าย cancelled-tag
+- **Export CSV (ทีมเชฟ):** ปุ่ม 📥 ใน day-nav (ซ่อนอัตโนมัติใน month mode) → `exportDayCSV()` gen CSV จาก `_allBookings` คอลัมน์ เวลา/ชื่อ/เบอร์/จำนวนคน/แพ้อาหาร/หมายเหตุ เรียงตามเวลา + UTF-8 BOM กันภาษาไทยเพี้ยน → `siplor-YYYY-MM-DD.csv`
+- **constants:** `CHANNELS`, `CANCEL_REASONS` ที่หัว `<script>`
+- ⚠️ worker.js **ไม่ต้องแก้** — forward body/response ผ่าน field ใหม่อัตโนมัติ
+- ⚠️ ต้องเพิ่ม col P/Q ใน Sheet + redeploy Code.gs + เพิ่ม field "ช่องทางการจอง" ใน Google Form (manual)
 
 ### calendar click-to-navigate (added 2026-06-08)
 - กดวันใน tab "ดูคิวว่าง" → ข้ามไปหน้า รายวัน วันนั้นทันที
