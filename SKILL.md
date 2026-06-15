@@ -213,7 +213,7 @@ else                → ?date=YYYY-MM-DD (default: วันนี้ BKK)
 - ปุ่ม 🔄 กู้คืน แสดงเฉพาะ `authed && b.cancelled` — เปิด form กู้คืน+ย้ายวัน
 
 ### Modes
-- **รายวัน (day)** — เลือกวันที่ด้วย Flatpickr, ปุ่ม ⊞ toggle compact, **ปุ่ม 📥 export CSV** (`exportDayCSV()` — ดูได้ไม่ต้อง login)
+- **รายวัน (day)** — เลือกวันที่ด้วย Flatpickr, ปุ่ม ⊞ toggle compact, **ปุ่ม 📥 ดาวน์โหลด Excel** (ในเนื้อหาใต้ section-label, `exportDayCSV()` — ดูได้ไม่ต้อง login)
 - **รายเดือน (month)** — มี 5 sub-tab:
   - 📌 ยังไม่ได้มา — `!isPast(b)`
   - ✅ ใช้บริการแล้ว — `isPast(b)`
@@ -373,7 +373,8 @@ function isPast(b) {
 - **เหตุผลยกเลิก (col P):** cancel modal มี `<select id="f-cancel-reason">` (จองซ้ำ/ยกเลิกในวัน/ยกเลิกล่วงหน้า/no show) — **บังคับเลือก** → `confirmCancel()` ส่ง `cancelReason` → Code.gs เขียน col P; restore เคลียร์ค่า
 - **ช่องทางจอง (col Q):** booking form มี `<select id="f-channel">` (Meta/Call/Line) — **บังคับเลือก** → add/edit ส่ง `channel` → Code.gs เขียน col Q; แสดง `.channel-badge` ม่วง ใต้เบอร์บน card
 - **tab ❌ ยกเลิก มี reason filter:** chip row (`renderReasonFilter()` + `setCancelReasonFilter()`) filter `_allCancelledBookings` ตาม `cancelReasonFilter`; reset ใน `setMonthTab()`; เหตุผลแสดงต่อท้าย cancelled-tag
-- **Export CSV (ทีมเชฟ):** ปุ่ม 📥 ใน day-nav (ซ่อนอัตโนมัติใน month mode) → `exportDayCSV()` gen CSV จาก `_allBookings` คอลัมน์ เวลา/ชื่อ/เบอร์/จำนวนคน/แพ้อาหาร/หมายเหตุ เรียงตามเวลา + UTF-8 BOM กันภาษาไทยเพี้ยน → `siplor-YYYY-MM-DD.csv`
+- **Export CSV (ทีมเชฟ):** ปุ่ม `📥 ดาวน์โหลด Excel (สำหรับครัว)` มีป้ายชื่อ อยู่ในเนื้อหา ใต้ section-label (`#export-btn`) — แสดงเฉพาะ day mode ที่มีรายการ (toggle ใน `renderFromCache()`); `exportDayCSV()` gen CSV จาก `_allBookings` คอลัมน์ เวลา/ชื่อ/เบอร์/จำนวนคน/แพ้อาหาร/หมายเหตุ เรียงตามเวลา + UTF-8 BOM กันภาษาไทยเพี้ยน → `siplor-YYYY-MM-DD.csv`
+  - ⚠️ เคยวางใน day-nav แล้ว**ตกขอบจอมือถือ** (row แน่นเกิน) → ย้ายมาเป็นปุ่มมีป้ายในเนื้อหาแทน (fixed 2026-06-15)
 - **constants:** `CHANNELS` (Meta/Call/Line), `CANCEL_REASONS` (จองซ้ำ/ยกเลิกในวัน/ยกเลิกล่วงหน้า/no show) ที่หัว `<script>` — แก้ที่นี่ที่เดียวถ้าจะเพิ่ม/ลดตัวเลือก (แต่ต้องอัปเดต `<option>` ใน HTML modal ทั้ง 2 ที่ด้วย เพราะ option เป็น static)
 - **state ใหม่:** `cancelReasonFilter` (`""` = ทุกเหตุผล) — reset ใน `setMonthTab()`
 - **CSV detail:** ใช้ `_allBookings` (day mode = วันนั้น, ไม่รวม cancelled, เรียงเวลาจาก Code.gs แล้ว), escape comma/quote/newline, prepend BOM `﻿`

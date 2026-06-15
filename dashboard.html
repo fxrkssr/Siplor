@@ -258,6 +258,23 @@
       text-decoration: underline dotted;
     }
 
+    .export-day-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 16px;
+      padding: 9px 16px;
+      background: var(--safe-bg);
+      color: var(--safe);
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      font-family: "Sarabun", sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .export-day-btn:active { background: #dcfce7; }
+
     /* Month date group */
     .date-group { margin-bottom: 24px; }
 
@@ -751,7 +768,6 @@
       <button class="nav-btn" onclick="shiftDate(1)">&#8250;</button>
       <button class="today-btn" onclick="goToday()">วันนี้</button>
       <button class="nav-btn compact-btn" id="compact-btn" onclick="toggleCompact()" title="แสดง 2 คอลัมน์">⊞</button>
-      <button class="nav-btn" id="export-btn" onclick="exportDayCSV()" title="ดาวน์โหลด Excel (CSV) สำหรับทีมเชฟ">📥</button>
     </div>
 
     <div class="month-nav" id="month-nav" style="display:none">
@@ -773,6 +789,7 @@
     <div class="section-label" id="section-label"
          onclick="if(mode==='day' && fp) fp.open()"></div>
     <div class="closed-banner" id="closed-banner">🔴 วันอังคาร — ร้านปิด</div>
+    <button class="export-day-btn" id="export-btn" onclick="exportDayCSV()" style="display:none">📥 ดาวน์โหลด Excel (สำหรับครัว)</button>
     <div id="booking-list"></div>
   </div>
 
@@ -1131,6 +1148,7 @@
   function renderFromCache() {
     const list  = document.getElementById("booking-list");
     const label = document.getElementById("section-label");
+    document.getElementById("export-btn").style.display = "none";
 
     // Queue tab — calendar grid แสดงจำนวนคนต่อวัน
     if (!searchQuery && mode === "month" && monthTab === "queue") {
@@ -1175,6 +1193,7 @@
       const date = document.getElementById("date-picker").value;
       label.textContent = total > 0 ? `${formatDateTH(date)} — ${total} คน` : formatDateTH(date);
       list.innerHTML = filtered.length === 0 ? renderEmptyDay(date) : filtered.map(b => renderCard(b)).join("");
+      document.getElementById("export-btn").style.display = filtered.length > 0 ? "inline-flex" : "none";
     } else {
       label.textContent = formatMonthTH(currentMonth);
       list.innerHTML = filtered.length === 0
