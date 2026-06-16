@@ -927,10 +927,7 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
   const API_URL  = "https://siplor.fxrkssr.workers.dev";
-  const USERS = {
-    "7777@": "restaurant",
-    "2608@": "home",
-  };
+  // รหัสผ่านย้ายไปเก็บเป็น secret ฝั่ง Cloudflare Worker (USERS_JSON) — ไม่อยู่ใน source อีกต่อไป
   const MAX_MONTHS_AHEAD = 3;
   const TIMES = [
     "17:00","17:30","18:00","18:30","19:00","19:30",
@@ -949,6 +946,7 @@
   let fp                 = null;
   let authed             = false;
   let currentUser        = "";
+  let authToken          = "";   // รหัสที่พิมพ์ตอน login — แนบไปทุก POST เขียน
   let editingRow             = null;
   let isRestoring            = false;
   let cancelTarget           = null;
@@ -1029,32 +1027,45 @@
     document.getElementById("pwd-overlay").style.display = "none";
   }
 
-  function submitPassword() {
-    const val  = document.getElementById("pwd-input").value;
-    const name = USERS[val];
-    if (name) {
-      authed      = true;
-      currentUser = name;
-      closePwdModal();
-      document.getElementById("lock-btn").textContent = "🔓";
-      document.getElementById("lock-btn").classList.add("unlocked");
-      document.getElementById("add-fab").classList.add("visible");
-      const tag = document.getElementById("user-tag");
-      tag.textContent = name;
-      tag.style.display = "inline";
-      loadBookings();
-    } else {
+  async function submitPassword() {
+    const val = document.getElementById("pwd-input").value;
+    const fail = () => {
       const input = document.getElementById("pwd-input");
       document.getElementById("pwd-error").style.display = "block";
       input.classList.add("shake");
       input.value = "";
       setTimeout(() => input.classList.remove("shake"), 400);
+    };
+
+    let res;
+    try {
+      res = await apiPost({ action: "auth", token: val });
+    } catch (e) {
+      alert("เชื่อมต่อไม่ได้");
+      return;
+    }
+
+    if (res && res.ok && res.user) {
+      authed      = true;
+      currentUser = res.user;
+      authToken   = val;
+      closePwdModal();
+      document.getElementById("lock-btn").textContent = "🔓";
+      document.getElementById("lock-btn").classList.add("unlocked");
+      document.getElementById("add-fab").classList.add("visible");
+      const tag = document.getElementById("user-tag");
+      tag.textContent = res.user;
+      tag.style.display = "inline";
+      loadBookings();
+    } else {
+      fail();
     }
   }
 
   function logout() {
     authed      = false;
     currentUser = "";
+    authToken   = "";
     document.getElementById("lock-btn").textContent = "🔒";
     document.getElementById("lock-btn").classList.remove("unlocked");
     document.getElementById("add-fab").classList.remove("visible");
@@ -1682,10 +1693,12 @@
 
   // ===== API =====
   async function apiPost(body) {
+    // แนบ token (รหัส login) ให้ทุก action เขียน — ยกเว้น auth ที่ส่ง token มาเองแล้ว
+    const payload = ("token" in body) ? body : { ...body, token: authToken };
     const res = await fetch(API_URL, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(body),
+      body:    JSON.stringify(payload),
     });
     return res.json();
   }

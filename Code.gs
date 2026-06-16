@@ -108,6 +108,11 @@ function doGet(e) {
 function doPost(e) {
   try {
     const body      = JSON.parse(e.postData.contents);
+
+    // กันคนยิง Apps Script ตรงๆ ข้าม Worker — เช็ค shared secret (ตั้งใน Script Properties)
+    const SECRET = PropertiesService.getScriptProperties().getProperty("SHARED_SECRET");
+    if (SECRET && body.secret !== SECRET) return jsonResponse({ error: "unauthorized" });
+
     const ss        = SpreadsheetApp.getActiveSpreadsheet();
     const sheet     = ss.getSheetByName(SHEET_NAME);
     const data      = sheet.getDataRange().getValues();

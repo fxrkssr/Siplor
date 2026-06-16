@@ -206,9 +206,10 @@ else                → ?date=YYYY-MM-DD (default: วันนี้ BKK)
 **URL:** Vercel (auto-deploy จาก GitHub main branch)
 
 ### Auth
-- 2 accounts: `const USERS = { "7777@": "แอดมิน 1", "2608@": "แอดมิน 2" }`
-- กดปุ่ม 🔒 → ใส่รหัส → `authed = true` → แสดงปุ่ม ✏️❌🗑️ + ปุ่มเพิ่ม + audit
-- Refresh หน้า = ต้องใส่รหัสใหม่ (ไม่มี persist)
+- รหัสผ่าน **ไม่อยู่ใน dashboard.html อีกแล้ว** — เก็บเป็น secret `USERS_JSON` ฝั่ง Worker (ดู "API Auth")
+- กดปุ่ม 🔒 → ใส่รหัส → `submitPassword()` ยิง `apiPost({action:"auth", token})` ไป Worker → ถ้า ok เก็บ `authToken` + `currentUser` (จาก response) → `authed = true` → แสดงปุ่ม ✏️❌🗑️ + ปุ่มเพิ่ม + audit
+- Refresh หน้า = ต้องใส่รหัสใหม่ (ไม่มี persist; `authToken` อยู่ใน memory)
+- `currentUser` (ชื่อจาก Worker) ใช้เป็น audit addedBy/editedBy/cancelledBy
 - ปุ่มแก้ไข/ยกเลิก/ลบ แสดงเฉพาะ `authed && !isPast(b) && !b.cancelled` (isPast = วันก่อนหน้าเท่านั้น — วันนี้ยังแก้ได้เสมอ)
 - ปุ่ม 🔄 กู้คืน แสดงเฉพาะ `authed && b.cancelled` — เปิด form กู้คืน+ย้ายวัน
 
@@ -316,10 +317,50 @@ function isPast(b) {
 
 ---
 
+## API Auth (added 2026-06-16)
+
+ป้องกัน POST เขียน Sheet — เดิมใครรู้ Worker URL ก็ยิงได้ ตอนนี้ต้องมี token
+
+```
+dashboard → POST {action, ..., token: รหัสที่พิมพ์}
+   Worker  → เช็ค token ∈ USERS_JSON ? ถ้าไม่ = 401
+           → ตัด token ออก + ฉีด secret: SHARED_SECRET แล้ว forward
+Apps Script→ เช็ค body.secret === Script Property "SHARED_SECRET" ? ถ้าไม่ = unauthorized
+```
+
+| ชั้น | เก็บ secret ที่ไหน | เช็คอะไร |
+|---|---|---|
+| dashboard.html | ไม่เก็บ (พิมพ์ตอน login → `authToken` ใน memory) | — |
+| worker.js | Cloudflare secret `USERS_JSON`, `SHARED_SECRET` | token ตรง user ไหม |
+| Code.gs | Script Property `SHARED_SECRET` | secret จาก Worker ตรงไหม |
+
+- **login:** `apiPost({action:"auth", token})` → Worker คืน `{ok:true, user}` หรือ 401
+- **write:** `apiPost()` แนบ `token: authToken` อัตโนมัติ (ยกเว้น body ที่มี token อยู่แล้ว)
+- **GET (อ่าน) ไม่เช็ค** — badge ลูกค้ายังโชว์ได้ไม่ต้อง login (ตั้งใจ)
+- Code.gs เช็คเฉพาะเมื่อตั้ง Script Property `SHARED_SECRET` แล้ว (ถ้ายังไม่ตั้ง = ข้าม ไม่ lockout)
+- ⚠️ ค่า `USERS_JSON` = `{"7777@":"restaurant","2608@":"home"}` (รหัสเดิม) — เปลี่ยนรหัสทำที่ Cloudflare secret ไม่ต้องแก้ code
+
+### Setup (ทำครั้งเดียว — ต้องทำเองก่อนใช้งานจริง)
+```bash
+# 1. ที่ worker (cd Siplor)
+npx wrangler secret put USERS_JSON
+#   วาง: {"7777@":"restaurant","2608@":"home"}
+npx wrangler secret put SHARED_SECRET
+#   วาง: สุ่มยาวๆ (uuid)
+npx wrangler deploy
+
+# 2. Apps Script: Project Settings ⚙️ → Script Properties → Add
+#    Property = SHARED_SECRET, Value = (ค่าเดียวกับข้อ 1)
+#    แล้ว Deploy → Manage deployments → New version
+```
+> ลำดับสำคัญ: ตั้ง secret + deploy worker **และ** ตั้ง Script Property + deploy Code.gs ให้ครบ **ก่อน** ที่ dashboard เวอร์ชันใหม่จะใช้งานได้ปกติ (ไม่งั้น login ไม่ผ่าน)
+
+---
+
 ## Known Issues / Notes
 
 - `_row` index ใช้ตอน load หน้า — ถ้ามีคนลบ row พร้อมกัน อาจ edit ผิด row (edge case, low risk)
-- ไม่มี auth ที่ API level — ใครรู้ Worker URL ก็ POST ได้ (acceptable สำหรับ internal tool)
+- **มี auth ที่ API level แล้ว (added 2026-06-16)** — ดูหัวข้อ "API Auth" ด้านล่าง (POST เขียนต้องมี token; GET อ่านยังเปิด)
 - วันอังคารบล็อก: ปัจจุบันใช้ validation ใน dashboard (`submitBookingForm`) เป็นหลัก — trigger `blockTuesdayBookings` (ยุค Form) ตายแล้วเพราะเลิกใช้ Form
 - **ทางเข้าข้อมูลเดียว = หน้าเว็บ** (ไม่มี Google Form แล้ว — ดู Tech Stack)
 - **ช่องทางการจอง + เหตุผลยกเลิก = required** ทั้งคู่ ตั้งแต่ 2026-06-15

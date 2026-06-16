@@ -16,11 +16,33 @@ export default {
     }
 
     if (request.method === "POST") {
-      const body = await request.text();
-      const res  = await fetch(APPS_SCRIPT_URL, {
+      let body;
+      try {
+        body = JSON.parse(await request.text());
+      } catch {
+        return new Response(JSON.stringify({ error: "bad request" }), { status: 400, headers: CORS });
+      }
+
+      const users = JSON.parse(env.USERS_JSON || "{}");
+      const user  = users[body.token];
+
+      // login: ตรวจรหัส คืนชื่อ user (สำหรับ audit)
+      if (body.action === "auth") {
+        if (!user) return new Response(JSON.stringify({ error: "รหัสไม่ถูกต้อง" }), { status: 401, headers: CORS });
+        return new Response(JSON.stringify({ ok: true, user }), { headers: { ...CORS, "Cache-Control": "no-store" } });
+      }
+
+      // write actions: ต้องมี token ที่ถูกต้อง
+      if (!user) return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: CORS });
+
+      // ฉีด shared secret ให้ Apps Script, ตัด token ทิ้งไม่ส่งต่อ
+      const { token, ...rest } = body;
+      const forwardBody = JSON.stringify({ ...rest, secret: env.SHARED_SECRET || "" });
+
+      const res = await fetch(APPS_SCRIPT_URL, {
         method:   "POST",
         headers:  { "Content-Type": "application/json" },
-        body,
+        body:     forwardBody,
         redirect: "follow",
       });
       const text = await res.text();
