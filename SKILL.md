@@ -339,21 +339,22 @@ Apps Script→ เช็ค body.secret === Script Property "SHARED_SECRET" ? �
 - **GET (อ่าน) ไม่เช็ค** — badge ลูกค้ายังโชว์ได้ไม่ต้อง login (ตั้งใจ)
 - Code.gs เช็คเฉพาะเมื่อตั้ง Script Property `SHARED_SECRET` แล้ว (ถ้ายังไม่ตั้ง = ข้าม ไม่ lockout)
 - ⚠️ ค่า `USERS_JSON` = `{"7777@":"restaurant","2608@":"home"}` (รหัสเดิม) — เปลี่ยนรหัสทำที่ Cloudflare secret ไม่ต้องแก้ code
+- 🔐 ค่า `SHARED_SECRET` เก็บใน memory ส่วนตัว (`siplor-shared-secret.md`) — ไม่อยู่ใน repo
 
-### Setup (ทำครั้งเดียว — ต้องทำเองก่อนใช้งานจริง)
+### Setup — ✅ ทำเสร็จแล้ว (2026-06-16)
+- ✅ Cloudflare: ตั้ง secret `USERS_JSON` + `SHARED_SECRET`, deploy worker (version `85d29e74`)
+- ✅ Apps Script: ตั้ง Script Property `SHARED_SECRET` + deploy Code.gs ใหม่
+- ✅ ทดสอบผ่าน: รหัสผิด→401, รหัสถูก→`{ok,user}`, ยิง add ไม่มี token→unauthorized
+- ทั้ง 2 ชั้น (Worker token + Apps Script secret) ทำงานครบแล้ว
+
+**ทำซ้ำตอนต้อง re-setup / เปลี่ยนเครื่อง:**
 ```bash
 # 1. ที่ worker (cd Siplor)
-npx wrangler secret put USERS_JSON
-#   วาง: {"7777@":"restaurant","2608@":"home"}
-npx wrangler secret put SHARED_SECRET
-#   วาง: สุ่มยาวๆ (uuid)
+printf '%s' '{"7777@":"restaurant","2608@":"home"}' | npx wrangler secret put USERS_JSON
+printf '%s' '<SHARED_SECRET>' | npx wrangler secret put SHARED_SECRET
 npx wrangler deploy
-
-# 2. Apps Script: Project Settings ⚙️ → Script Properties → Add
-#    Property = SHARED_SECRET, Value = (ค่าเดียวกับข้อ 1)
-#    แล้ว Deploy → Manage deployments → New version
+# 2. Apps Script: Project Settings ⚙️ → Script Properties → SHARED_SECRET = <ค่าเดียวกัน> → New version
 ```
-> ลำดับสำคัญ: ตั้ง secret + deploy worker **และ** ตั้ง Script Property + deploy Code.gs ให้ครบ **ก่อน** ที่ dashboard เวอร์ชันใหม่จะใช้งานได้ปกติ (ไม่งั้น login ไม่ผ่าน)
 
 ---
 
