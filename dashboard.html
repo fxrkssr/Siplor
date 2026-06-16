@@ -988,6 +988,20 @@
     return new Date().toLocaleTimeString("sv-SE", { timeZone: "Asia/Bangkok" }).substring(0, 5);
   }
 
+  // timestamp BKK "YYYY-MM-DD HH:mm" สำหรับ audit (addedAt/editedAt/cancelledAt)
+  function nowBKKStamp() {
+    return new Date().toLocaleString("sv-SE", { timeZone: "Asia/Bangkok" })
+                     .replace("T", " ").substring(0, 16);
+  }
+
+  // หา booking จาก _row โดย fallback ทุกแหล่ง cache
+  function findBooking(row) {
+    return _bookingsByRow[row]
+        ?? _allSearchBookings.find(x => x._row === row)
+        ?? _allCancelledBookings.find(x => x._row === row)
+        ?? null;
+  }
+
   function isPast(b) {
     return b.date < todayISO();
   }
@@ -1491,12 +1505,7 @@
 
   // ===== BOOKING FORM =====
   function openBookingForm(row, restore = false) {
-    const b = row !== null
-      ? (_bookingsByRow[row]
-         ?? _allSearchBookings.find(x => x._row === row)
-         ?? _allCancelledBookings.find(x => x._row === row)
-         ?? null)
-      : null;
+    const b = row !== null ? findBooking(row) : null;
     editingRow  = b ? b._row : null;
     isRestoring = restore;
     document.getElementById("form-title").textContent = restore ? "กู้คืนและย้ายวัน" : (b ? "แก้ไขการจอง" : "เพิ่มการจอง");
@@ -1544,8 +1553,7 @@
     btn.disabled = true;
     btn.textContent = "กำลังบันทึก...";
 
-    const nowBKK = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Bangkok" })
-                              .replace("T", " ").substring(0, 16);
+    const nowBKK = nowBKKStamp();
 
     try {
       const payload = {
@@ -1585,7 +1593,7 @@
 
   // ===== DELETE =====
   function openDeleteConfirm(row) {
-    const b = _bookingsByRow[row] ?? _allSearchBookings.find(x => x._row === row) ?? null;
+    const b = findBooking(row);
     document.getElementById("del-desc").textContent =
       `ลบการจองของ "${b ? b.name : ""}" ออกจากระบบถาวร?`;
     document.getElementById("del-overlay").style.display = "flex";
@@ -1619,7 +1627,7 @@
 
   // ===== CANCEL =====
   function openCancelConfirm(row) {
-    const b = _bookingsByRow[row] ?? _allSearchBookings.find(x => x._row === row) ?? null;
+    const b = findBooking(row);
     cancelTarget = row;
     document.getElementById("cancel-desc").textContent =
       `ยืนยันยกเลิกการจองของ "${b ? b.name : ""}"?`;
@@ -1643,8 +1651,7 @@
     btn.disabled = true;
     btn.textContent = "กำลังบันทึก...";
     try {
-      const nowBKK = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Bangkok" })
-                                .replace("T", " ").substring(0, 16);
+      const nowBKK = nowBKKStamp();
       const res = await apiPost({ action: "cancel", _row: cancelTarget, cancelledBy: currentUser, cancelledAt: nowBKK, cancelReason: reason });
       if (res.ok) {
         closeCancelConfirm();
@@ -1782,10 +1789,7 @@
 
   // ===== COPY =====
   function copyBookingText(row, btn) {
-    const b = _bookingsByRow[row]
-           ?? _allSearchBookings.find(x => x._row === row)
-           ?? _allCancelledBookings.find(x => x._row === row)
-           ?? null;
+    const b = findBooking(row);
     if (!b) return;
 
     const days   = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
@@ -1846,10 +1850,10 @@
            onmouseover="setACFocus(${i})">
         <div class="ac-name">${highlight(c.name, q)}</div>
         <div class="ac-meta">
-          <span>${c.phone}</span>
+          <span>${escHtml(c.phone)}</span>
           ${c.totalVisits > 1 ? `<span class="ac-visits">${c.totalVisits} ครั้ง</span>` : ''}
           ${c.allergy && c.allergy !== 'ไม่แพ้' && c.allergy !== 'ไม่ได้แจ้ง'
-            ? `<span style="color:var(--danger)">⚠ ${c.allergy}</span>` : ''}
+            ? `<span style="color:var(--danger)">⚠ ${escHtml(c.allergy)}</span>` : ''}
         </div>
       </div>
     `).join('');
@@ -1898,11 +1902,13 @@
   function scheduleClosePhoneAC() { setTimeout(closePhoneAC, 150); }
 
   function highlight(text, q) {
+    text = String(text || "");
     const idx = text.toLowerCase().indexOf(q);
-    if (idx < 0) return text;
-    return text.substring(0, idx)
-      + `<mark style="background:#fef08a;border-radius:3px;padding:0 1px">${text.substring(idx, idx + q.length)}</mark>`
-      + text.substring(idx + q.length);
+    if (idx < 0) return escHtml(text);
+    // คำนวณ index บน text ดิบ แล้วค่อย escape แต่ละช่วง — กัน XSS + offset ไม่เพี้ยน
+    return escHtml(text.substring(0, idx))
+      + `<mark style="background:#fef08a;border-radius:3px;padding:0 1px">${escHtml(text.substring(idx, idx + q.length))}</mark>`
+      + escHtml(text.substring(idx + q.length));
   }
 
   function selectCustomer(idx) {

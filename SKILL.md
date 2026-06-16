@@ -425,6 +425,11 @@ npx wrangler deploy
 - ⚠️ **manual ที่ทำไปแล้ว:** เพิ่ม col P=`เหตุผลยกเลิก`, Q=`ช่องทางการจอง` ใน Sheet + redeploy Code.gs (New version)
 - ❌ **ไม่ต้องแตะ Google Form** — เลิกใช้แล้ว (ดู Tech Stack)
 
+### refactor + XSS hardening (2026-06-16)
+- **`findBooking(row)`** helper — รวม lookup `_bookingsByRow ?? _allSearchBookings ?? _allCancelledBookings` ใช้ใน copyBookingText/openBookingForm/openDeleteConfirm/openCancelConfirm (เดิม 2 อันหลังหาแค่ 2 แหล่ง)
+- **`nowBKKStamp()`** helper — รวม timestamp BKK ที่ซ้ำใน submitBookingForm + confirmCancel
+- **`highlight()` escape แล้ว** — autocomplete dropdown เคย render ชื่อ/เบอร์/แพ้ดิบ (XSS เล็กๆ) → escHtml ครบทั้ง name/phone/allergy ใน onNameInput + ตัว highlight เอง
+
 ### calendar click-to-navigate (added 2026-06-08)
 - กดวันใน tab "ดูคิวว่าง" → ข้ามไปหน้า รายวัน วันนั้นทันที
 - `renderQueueCalendar()` เพิ่ม `onclick="navigateToDay('${dateStr}')"` + `cursor:pointer` บน cell ที่ไม่ใช่วันอังคาร
